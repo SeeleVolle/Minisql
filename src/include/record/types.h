@@ -68,7 +68,7 @@ class Type {
   virtual CmpBool CompareGreaterThanEquals(const Field &left, const Field &right) const;
 
  protected:
-  TypeId type_id_{TypeId::kTypeInvalid};
+  TypeId type_id_{TypeId::kTypeInvalid}; //type_id in the enum kTypeInvalid
   static Type *type_singletons_[TypeId::KMaxTypeId + 1];
 };
 

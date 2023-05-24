@@ -5,6 +5,7 @@
 #include <mutex>
 #include <unordered_set>
 #include <vector>
+#include <list>
 
 #include "buffer/replacer.h"
 #include "common/config.h"
@@ -35,8 +36,12 @@ class LRUReplacer : public Replacer {
 
   size_t Size() override;
 
+  size_t Get_max_Size();
 private:
   // add your own private member variables here
+  std::list<frame_id_t> LRU_list; // a double linked list to store the page in the LRU list
+  std::unordered_set<frame_id_t> LRU_map; //a hashmap to represent whether a frame_id_t is in the LRU_LIST
+  size_t max_pages;
 };
 
 #endif  // MINISQL_LRU_REPLACER_H

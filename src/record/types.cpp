@@ -20,58 +20,84 @@ inline int CompareStrings(const char *str1, int len1, const char *str2, int len2
 Type *Type::type_singletons_[] = {new Type(TypeId::kTypeInvalid), new TypeInt(), new TypeFloat(), new TypeChar()};
 
 uint32_t Type::SerializeTo(const Field &field, char *buf) const {
-  ASSERT(false, "SerializeTo not implemented.");
-  return 0;
+  ASSERT(buf != nullptr, "buf is null in Type::SerializeTo");
+  ASSERT(type_id_ == field.type_id_, "type_id_ is not equal to field.type_id_ in Type::SerializeTo");
+  ASSERT(field.IsNull() == false, "field is null in Type::SerializeTo");
+// type_id_ is not in the TypeId, assert false
+  if(type_id_ != TypeId::kTypeChar && type_id_ != TypeId::kTypeInt && type_id_ != TypeId::kTypeFloat) {
+    ASSERT(false, "type_id_ is not in the TypeId, assert false");
+  }
+  uint32_t offset = 0;
+  offset = this->GetInstance(type_id_)->SerializeTo(field, buf);
+  return offset;
 }
 
+//DeserializeFrom the data in this type
 uint32_t Type::DeserializeFrom(char *storage, Field **field, bool is_null) const {
-  ASSERT(false, "DeserializeFrom not implemented.");
-  return 0;
+  ASSERT(storage != nullptr, "storage is null in Type::DeserializeFrom");
+  ASSERT(field != nullptr, "field is null in Type::DeserializeFrom");
+  uint32_t offset = 0;
+  if(type_id_ != TypeId::kTypeChar && type_id_ != TypeId::kTypeInt && type_id_ != TypeId::kTypeFloat) {
+    ASSERT(false, "type_id_ is not in the TypeId, assert false");
+  }
+  offset = this->GetInstance(type_id_)->DeserializeFrom(storage, field, is_null);
+  return offset;
 }
 
 uint32_t Type::GetSerializedSize(const Field &field, bool is_null) const {
-  ASSERT(false, "GetSerializedSize not implemented.");
-  return 0;
+  ASSERT(field.is_null_ == false, "field is null in Type::GetSerializedSize");
+  return this->GetInstance(type_id_)->GetSerializedSize(field, is_null);
 }
 
 const char *Type::GetData(const Field &val) const {
-  ASSERT(false, "GetData not implemented.");
-  return nullptr;
+  ASSERT(val.type_id_ == type_id_, "val.type_id_ is not equal to type_id_ in Type::GetData");
+  switch(type_id_){
+    case TypeId::kTypeInt:{
+      int32_t int_val = val.value_.integer_;
+      //memcpy ok ?
+      std::string str_int = std::to_string(int_val);
+      return str_int.c_str();
+    }
+    case TypeId::kTypeFloat:{
+      float float_val = val.value_.float_;
+      std::string str_float = std::to_string(float_val);
+      return str_float.c_str();
+    }
+    case TypeId::kTypeChar:{
+      return val.value_.chars_;
+    }
+    default:
+      ASSERT(false, "type_id_ is not in the TypeId, assert false");
+  }
 }
 
 uint32_t Type::GetLength(const Field &val) const {
-  ASSERT(false, "GetLength not implemented.");
-  return 0;
+  ASSERT(val.type_id_ == type_id_, "val.type_id_ is not equal to type_id_ in Type::GetData");
+  return this->GetInstance(val.type_id_)->GetLength(val);
 }
 
 CmpBool Type::CompareEquals(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareEquals not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareEquals(left, right);
 }
 
 CmpBool Type::CompareNotEquals(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareNotEquals not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareNotEquals(left, right);
 }
 
 CmpBool Type::CompareLessThan(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareLessThan not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareLessThan(left, right);
 }
 
 CmpBool Type::CompareLessThanEquals(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareLessThanEquals not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareLessThanEquals(left, right);
 }
 
 CmpBool Type::CompareGreaterThan(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareGreaterThan not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareGreaterThan(left, right);
 }
 
 CmpBool Type::CompareGreaterThanEquals(const Field &left, const Field &right) const {
-  ASSERT(false, "CompareGreaterThanEquals not implemented.");
-  return kNull;
+  return this->GetInstance(type_id_)->CompareGreaterThanEquals(left, right);
 }
 
 // ==============================TypeInt=================================

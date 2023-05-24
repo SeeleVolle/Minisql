@@ -30,7 +30,7 @@ bool TablePage::InsertTuple(Row &row, Schema *schema, Transaction *txn, LockMana
   // Otherwise we claim available free space..
   SetFreeSpacePointer(GetFreeSpacePointer() - serialized_size);
   uint32_t __attribute__((unused)) write_bytes = row.SerializeTo(GetData() + GetFreeSpacePointer(), schema);
-  ASSERT(write_bytes == serialized_size, "Unexpected behavior in row serialize.");
+  ASSERT(write_bytes == serialized_size, "row is not in integrity in row serialize.");
 
   // Set the tuple.
   SetTupleOffsetAtSlot(i, GetFreeSpacePointer());
@@ -62,22 +62,25 @@ bool TablePage::MarkDelete(const RowId &rid, Transaction *txn, LockManager *lock
 }
 
 bool TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Transaction *txn,
-                            LockManager *lock_manager, LogManager *log_manager) {
+                            LockManager *lock_manager, LogManager *log_manager, std::string &message) {
   ASSERT(old_row != nullptr && old_row->GetRowId().Get() != INVALID_ROWID.Get(), "invalid old row.");
   uint32_t serialized_size = new_row.GetSerializedSize(schema);
   ASSERT(serialized_size > 0, "Can not have empty row.");
   uint32_t slot_num = old_row->GetRowId().GetSlotNum();
   // If the slot number is invalid, abort.
   if (slot_num >= GetTupleCount()) {
+    message = "Invalid slot number";
     return false;
   }
   uint32_t tuple_size = GetTupleSize(slot_num);
   // If the tuple is deleted, abort.
   if (IsDeleted(tuple_size)) {
+    message = "Tuple is already deleted.";
     return false;
   }
   // If there is not enough space to update, we need to update via delete followed by an insert (not enough space).
   if (GetFreeSpaceRemaining() + tuple_size < serialized_size) {
+    message = "Not enough space to update, need to delete and insert for update.";
     return false;
   }
   // Copy out the old value.
@@ -99,6 +102,7 @@ bool TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Tr
       SetTupleOffsetAtSlot(i, tuple_offset_i + tuple_size - new_row.GetSerializedSize(schema));
     }
   }
+  message = "Update successful.";
   return true;
 }
 

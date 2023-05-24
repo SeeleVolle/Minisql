@@ -6,6 +6,14 @@
 
 #include "gtest/gtest.h"
 
+#include "glog/logging.h"
+
+void InitGoogleLog(char *argv) {
+  FLAGS_logtostderr = true;
+  FLAGS_colorlogtostderr = true;
+  google::InitGoogleLogging(argv);
+}
+
 TEST(BufferPoolManagerTest, BinaryDataTest) {
   const std::string db_name = "bpm_test.db";
   const size_t buffer_pool_size = 10;
@@ -42,6 +50,7 @@ TEST(BufferPoolManagerTest, BinaryDataTest) {
   // Scenario: We should be able to create new pages until we fill up the buffer pool.
   for (size_t i = 1; i < buffer_pool_size; ++i) {
     EXPECT_NE(nullptr, bpm->NewPage(page_id_temp));
+    page0 = bpm->FetchPage(0);
     EXPECT_EQ(i, page_id_temp);
   }
 
@@ -53,6 +62,8 @@ TEST(BufferPoolManagerTest, BinaryDataTest) {
   // Scenario: After unpinning pages {0, 1, 2, 3, 4} we should be able to create 5 new pages
   for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(true, bpm->UnpinPage(i, true));
+//    LOG(INFO) <<"i:" << i<<endl;
+//    assert(memcmp(page0->GetData(), random_binary_data, PAGE_SIZE) == 0);
     EXPECT_TRUE(bpm->FlushPage(i));
   }
   for (int i = 0; i < 5; ++i) {

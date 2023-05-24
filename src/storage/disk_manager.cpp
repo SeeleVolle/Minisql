@@ -7,6 +7,8 @@
 #include "glog/logging.h"
 #include "page/bitmap_page.h"
 
+const int FIRST_BITMAP_INDEX = 1;
+
 DiskManager::DiskManager(const std::string &db_file) : file_name_(db_file) {
   std::scoped_lock<std::recursive_mutex> lock(db_io_latch_);
   db_io_.open(db_file, std::ios::binary | std::ios::in | std::ios::out);
@@ -49,21 +51,71 @@ void DiskManager::WritePage(page_id_t logical_page_id, const char *page_data) {
  * TODO: Student Implement
  */
 page_id_t DiskManager::AllocatePage() {
-  ASSERT(false, "Not implemented yet.");
-  return INVALID_PAGE_ID;
+  size_t bitmap_page_index = 0;
+  char bitmap_data[PAGE_SIZE];
+  memset(bitmap_data,0,PAGE_SIZE * sizeof(char));
+  DiskFileMetaPage* meta_page = reinterpret_cast<DiskFileMetaPage*>(this->GetMetaData());
+  while(1){
+    //Read the bitmap_data for the bitmap_page, note 0 for the metapage
+    //1...1001 1002...2002 2003...3003 3004...4004
+    size_t log = FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1);
+    ReadPhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1) ,bitmap_data);
+    BitmapPage<PAGE_SIZE> bitmap_page(bitmap_data);
+    //We need to allocate page in another bitmap_page
+    if(bitmap_page.IsFull()){
+      bitmap_page_index++;
+    }
+    else{
+      if(bitmap_page.IsEmpty()){
+        meta_page->num_extents_++;
+      }
+      meta_page->extent_used_page_[bitmap_page_index]++;
+      meta_page->num_allocated_pages_++;
+      uint32_t index;
+      //Allocate a page
+      bitmap_page.AllocatePage(index);
+      //Write the bitmap_page back
+      WritePhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1), reinterpret_cast<char *>(&bitmap_page));
+
+      return index + BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() * bitmap_page_index;
+    }
+  }
 }
 
 /**
  * TODO: Student Implement
  */
 void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
-  ASSERT(false, "Not implemented yet.");
+  char bitmap_data[PAGE_SIZE];
+  memset(bitmap_data, 0, PAGE_SIZE);
+  size_t page_index = logical_page_id % BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
+  size_t bitmap_page_index = logical_page_id / BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
+  ReadPhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1),bitmap_data);
+  BitmapPage<PAGE_SIZE> bitmap_page(bitmap_data);
+  bitmap_page.DeAllocatePage(page_index);
+
+  DiskFileMetaPage * meta_page = reinterpret_cast<DiskFileMetaPage *>(this->GetMetaData());
+  //If the bitmap_page is empty after delete the page, the extent should decrease by 1
+  if(bitmap_page.IsEmpty())
+  {
+    meta_page->num_extents_--;
+  }
+  meta_page->num_allocated_pages_--;
+  meta_page->extent_used_page_[bitmap_page_index]--;
+  WritePhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1),reinterpret_cast<char *>(&bitmap_page));
 }
 
 /**
  * TODO: Student Implement
  */
 bool DiskManager::IsPageFree(page_id_t logical_page_id) {
+  char bitmap_data[PAGE_SIZE];
+  size_t page_index = logical_page_id % BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
+  size_t bitmap_page_index = logical_page_id / BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
+  ReadPhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1) ,bitmap_data);
+  BitmapPage<PAGE_SIZE> bitmap_page(bitmap_data);
+  if(bitmap_page.IsPageFree(page_index))
+    return true;
   return false;
 }
 
@@ -71,7 +123,7 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
  * TODO: Student Implement
  */
 page_id_t DiskManager::MapPageId(page_id_t logical_page_id) {
-  return 0;
+  return logical_page_id + 2 + logical_page_id / BITMAP_SIZE;
 }
 
 int DiskManager::GetFileSize(const std::string &file_name) {

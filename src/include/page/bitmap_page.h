@@ -8,7 +8,10 @@
 
 template <size_t PageSize>
 class BitmapPage {
- public:
+public:
+
+  BitmapPage();
+  BitmapPage(char *bitmap_data);
   /**
    * @return The number of pages that the bitmap page can record, i.e. the capacity of an extent.
    */
@@ -30,6 +33,10 @@ class BitmapPage {
    */
   bool IsPageFree(uint32_t page_offset) const;
 
+  bool IsFull() const;
+
+  bool IsEmpty() const;
+
  private:
   /**
    * check a bit(byte_index, bit_index) in bytes is free(value 0).
@@ -44,10 +51,11 @@ class BitmapPage {
   static constexpr size_t MAX_CHARS = PageSize - 2 * sizeof(uint32_t);
 
  private:
-  /** The space occupied by all members of the class should be equal to the PageSize */
-  [[maybe_unused]] uint32_t page_allocated_;
-  [[maybe_unused]] uint32_t next_free_page_;
-  [[maybe_unused]] unsigned char bytes[MAX_CHARS];
+  /** The space occupied by all members of the class should be equal to th    e PageSize */
+  uint32_t page_allocated_;
+  uint32_t next_free_page_;
+  unsigned char bytes[MAX_CHARS];
+
 };
 
 #endif  // MINISQL_BITMAP_PAGE_H

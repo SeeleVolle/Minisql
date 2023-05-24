@@ -1,5 +1,5 @@
 # MiniSQL
-
+12321312123123123
 
 本框架参考CMU-15445 BusTub框架进行改写，在保留了缓冲池、索引、记录模块的一些核心设计理念的基础上，做了一些修改和扩展，使之兼容于原MiniSQL实验指导的要求。
 以下列出了改动/扩展较大的几个地方：
@@ -32,6 +32,8 @@
 开发和构建。WSL请选择Ubuntu子系统（推荐Ubuntu20及以上）。如果你使用Clion作为IDE，可以在Clion中配置WSL从而进行调试，具体请参考
 [Clion with WSL](https://blog.jetbrains.com/clion/2018/01/clion-and-linux-toolchain-on-windows-are-now-friends/)
 
+
+1231231
 #### MacOS & Linux & WSL
 基本构建命令
 ```bash

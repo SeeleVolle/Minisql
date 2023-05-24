@@ -8,7 +8,7 @@
 
 + 功能介绍：Disk Manager负责数据库文件中数据页page的分配和回收，以及数据页中数据的读取和写出。
 
-+ 结构：由Meta page, Bitmap page, Extent pages三部分组成，其在内存中的组织可以参考下图。其中一个Bitmap page和Extent pages组成一个extent
++ 结构介绍：由Meta page, Bitmap page, Extent pages三部分组成，其在内存中的组织可以参考下图。其中一个Bitmap page和Extent pages组成一个extent
 
   ![image-20230521162534593](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230521162534593.png)
 
@@ -45,7 +45,7 @@
 
 + 功能介绍：BufferPool模块主要负责将磁盘中的数据页从内存中来回移动到磁盘，实现了类似于缓存的操作
 
-+ 结构：
++ 结构介绍：
 
   + 属性元素：![image-20230522091132934](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230522091132934.png)
 
@@ -105,9 +105,12 @@
 
   #### 3.1 模块介绍
 
+  + 总功能介绍：Record Manager模块主要用于负责管理数据库的记录，支持记录的插入，删除和查找操作。对外提供相应的接口
+  + 结构介绍：Record Manager的核心是通过堆表TableHeap来管理记录，TableHeap由table_page的双向链表构成，table_page是物理上实质存储记录(Row)的地方，所以TableHeap中是通过Row的唯一标识RowId来找到Row所属的table_page，再通过table_page中的具体实现来进行Row的插入，更新和删除. TableHeap通过实现的TableIterator来进行数据的访问
+
   ##### 3.1.1 Table_page:
 
-  + 实现构成：table_page的具体实现分为两个部分，table_Page外部作为双向链表的连接部分，内部tuple的插入，更新，删除部分，但在删除部分仅仅是打上了逻辑上的DeletedFlag标记，没有实际删除
+  + 模块构成：table_page的具体实现分为两个部分，table_Page外部作为双向链表的连接部分，内部tuple的插入，更新，删除部分，在删除部分分为打上逻辑上的DeletedFlag标记标识删除和物理上的实质删除，
 
   + 物理组织：table_page作为一个数据页，大小仍然为PAGE_SIZE，物理上由table_page_header, free_space和insert_tuples所构成。table_page_header结构如下
 
@@ -117,7 +120,19 @@
 
   ##### 3.1.2 table_heap
 
-  + 
+  + 模块构成：table_heap由table_page的双向链表构成，包括创建堆表，对数据的插入，删除，更新，查询。成员变量包括一个用于page管理的buffer_pool_manager，堆表中第一个first_page_id以及整张表的结构schema_
+
+  + 功能函数：
+
+    ![image-20230524083003046](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524083003046.png)
+
+  ##### 3.1.3 table_iterator
+
+  + 模块构成：table_iterator实现了对于table_heap的访问，实现了对于迭代器来说常见的++，->等操作，成员变量包括指针row_用于指示当前行，table\_heap\_用于访问当前row\_所在的table_heap
+
+  ##### 3.1.4 record instances
+
+  
 
   ### 4. Index Manager
 
@@ -132,22 +147,22 @@
   ### 5. Catalog Manager
 
   #### 5.1 模块介绍
-  
+
   #### 5.2 具体实现细节
+
   
-  
-  
+
   ### 6. Planner Manager
-  
+
   #### 6.1 模块介绍
-  
+
   #### 6.2 具体实现细节
+
   
-  
-  
+
   ### 7. Executor Manager
-  
+
   #### 7.1 模块介绍
-  
+
   #### 7.2 具体实现细节
 

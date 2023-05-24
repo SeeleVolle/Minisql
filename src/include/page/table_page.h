@@ -50,7 +50,7 @@ class TablePage : public Page {
   bool MarkDelete(const RowId &rid, Transaction *txn, LockManager *lock_manager, LogManager *log_manager);
 
   bool UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Transaction *txn, LockManager *lock_manager,
-                   LogManager *log_manager);
+                   LogManager *log_manager, std::string& message);
 
   void ApplyDelete(const RowId &rid, Transaction *txn, LogManager *log_manager);
 
@@ -113,6 +113,7 @@ class TablePage : public Page {
 
  public:
   static constexpr size_t SIZE_MAX_ROW = PAGE_SIZE - SIZE_TABLE_PAGE_HEADER - SIZE_TUPLE;
+  //SiZE_MAX_
 };
 
 #endif

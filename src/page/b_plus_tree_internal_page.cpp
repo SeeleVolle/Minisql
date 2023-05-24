@@ -124,7 +124,9 @@ int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_ke
  * buffer_pool_manager 是干嘛的？传给CopyNFrom()用于Fetch数据页
  */
 void InternalPage::MoveHalfTo(InternalPage *recipient, BufferPoolManager *buffer_pool_manager) {
-
+  int amount = this->GetSize() - this->GetMinSize();
+  recipient->CopyNFrom(PairPtrAt(this->GetSize()/2), amount, buffer_pool_manager);
+  this->IncreaseSize(-1 * amount);
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
@@ -140,6 +142,7 @@ void InternalPage::CopyNFrom(void *src, int size, BufferPoolManager *buffer_pool
     auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i)));
     ASSERT(child != nullptr, "child is nullptr in the CopyNfrom function\n");
     child->SetParentPageId(this->GetPageId());
+    buffer_pool_manager->UnpinPage(child->GetPageId(), true);
   }
 }
 
@@ -152,6 +155,11 @@ void InternalPage::CopyNFrom(void *src, int size, BufferPoolManager *buffer_pool
  * NOTE: store key&value pair continuously after deletion
  */
 void InternalPage::Remove(int index) {
+  for(int i = index; i < GetSize()-1; i++){
+    this->SetKeyAt(i, KeyAt(i + 1));
+    this->SetValueAt(i, ValueAt(i + 1));
+  }
+  this->IncreaseSize(-1);
 }
 
 /*
@@ -159,7 +167,9 @@ void InternalPage::Remove(int index) {
  * NOTE: only call this method within AdjustRoot()(in b_plus_tree.cpp)
  */
 page_id_t InternalPage::RemoveAndReturnOnlyChild() {
-  return 0;
+  page_id_t only_value = ValueAt(0);
+  this->IncreaseSize(-1);
+  return only_value;
 }
 
 /*****************************************************************************
@@ -172,7 +182,17 @@ page_id_t InternalPage::RemoveAndReturnOnlyChild() {
  * You also need to use BufferPoolManager to persist changes to the parent page id for those
  * pages that are moved to the recipient
  */
+//What is the meaning of the middle_key, if it is from the root, then it must be in the child
 void InternalPage::MoveAllTo(InternalPage *recipient, GenericKey *middle_key, BufferPoolManager *buffer_pool_manager) {
+  recipient->CopyNFrom(PairPtrAt(0), GetSize(), buffer_pool_manager);
+//  recipient->SetKeyAt(0, middle_key);
+  for(int i = 0; i < GetSize(); i++){
+    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i)));
+    ASSERT(child != nullptr, "child is nullptr in the InternalPage::MoveAllTo function\n");
+    child->SetParentPageId(recipient->GetPageId());
+    buffer_pool_manager->UnpinPage(child->GetPageId(), true);
+  }
+  this->SetSize(0);
 }
 
 /*****************************************************************************
@@ -188,6 +208,12 @@ void InternalPage::MoveAllTo(InternalPage *recipient, GenericKey *middle_key, Bu
  */
 void InternalPage::MoveFirstToEndOf(InternalPage *recipient, GenericKey *middle_key,
                                     BufferPoolManager *buffer_pool_manager) {
+  recipient->CopyLastFrom(KeyAt(0), ValueAt(0), buffer_pool_manager);
+  for(int i = 0; i < GetSize()-1; i++){
+    this->SetKeyAt(i, KeyAt(i+1));
+    this->SetValueAt(i, ValueAt(i+1));
+  }
+  this->IncreaseSize(-1);
 }
 
 /* Append an entry at the end.
@@ -195,6 +221,9 @@ void InternalPage::MoveFirstToEndOf(InternalPage *recipient, GenericKey *middle_
  * So I need to 'adopt' it by changing its parent page id, which needs to be persisted with BufferPoolManger
  */
 void InternalPage::CopyLastFrom(GenericKey *key, const page_id_t value, BufferPoolManager *buffer_pool_manager) {
+  this->SetKeyAt(GetSize(), key);
+  this->SetValueAt(GetSize(), value);
+  this->IncreaseSize(1);
 }
 
 /*
@@ -206,11 +235,20 @@ void InternalPage::CopyLastFrom(GenericKey *key, const page_id_t value, BufferPo
  */
 void InternalPage::MoveLastToFrontOf(InternalPage *recipient, GenericKey *middle_key,
                                      BufferPoolManager *buffer_pool_manager) {
+  recipient->CopyFirstFrom(KeyAt(GetSize()-1), ValueAt(GetSize()-1), buffer_pool_manager);
+  this->IncreaseSize(-1);
 }
 
 /* Append an entry at the beginning.
  * Since it is an internal page, the moved entry(page)'s parent needs to be updated.
  * So I need to 'adopt' it by changing its parent page id, which needs to be persisted with BufferPoolManger
  */
-void InternalPage::CopyFirstFrom(const page_id_t value, BufferPoolManager *buffer_pool_manager) {
+void InternalPage::CopyFirstFrom(GenericKey *key, const page_id_t value, BufferPoolManager *buffer_pool_manager) {
+  for(int i = 1; i < GetSize()+1; i++){
+    this->SetKeyAt(i, KeyAt(i-1));
+    this->SetValueAt(i, ValueAt(i-1));
+  }
+  this->SetKeyAt(0, key);
+  this->SetValueAt(0, value);
+  this->IncreaseSize(1);
 }

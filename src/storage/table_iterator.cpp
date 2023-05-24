@@ -77,18 +77,24 @@ TableIterator TableIterator::operator++(int) {
   TableIterator old = *this;
   TablePage *now_page = reinterpret_cast<TablePage *>(this->table_heap->buffer_pool_manager_->FetchPage(this->row->GetRowId().GetPageId()));
   RowId *next_rowid;
+  page_id_t next_page_id;
+
   if (now_page->GetNextTupleRid(row->GetRowId(), next_rowid))
   {
     this->row = new Row(*next_rowid);
     now_page->GetTuple(this->row, this->table_heap->schema_, this->txn, this->table_heap->lock_manager_);
   }
   //if it is the last row of the now_page, then we should find the next page
-  else{
-    page_id_t next_page_id = now_page->GetNextPageId();
+  else if((next_page_id = now_page->GetNextPageId()) != INVALID_PAGE_ID){
     now_page = reinterpret_cast<TablePage *>(this->table_heap->buffer_pool_manager_->FetchPage(next_page_id));
     now_page->GetFirstTupleRid(next_rowid);
     this->row = new Row(*next_rowid);
     now_page->GetTuple(this->row, this->table_heap->schema_, this->txn, this->table_heap->lock_manager_);
+  }
+  //If it is the last row of the last page, then we should find the end iterator
+  else{
+    this->row = nullptr;
+    this->table_heap = nullptr;
   }
   return old;
 }

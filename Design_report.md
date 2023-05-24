@@ -67,39 +67,39 @@
 
   + FetchPage：
 
-    > 1.     Search the page table for the requested page (P).
-    > 1.1    If P exists, pin it and return it immediately.
-    > 1.2    If P does not exist, find a replacement page (R) from either the free list or the replacer.Note that pages are always found from the free list first.
-    > 2.     If R is dirty, write it back to the disk.
-    > 3.     Delete R from the page table and insert P.
-    > 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
+    1.     Search the page table for the requested page (P).
+           1.1    If P exists, pin it and return it immediately.
+           1.2    If P does not exist, find a replacement page (R) from either the free list or the replacer.Note that pages are always found from the free list first.
+    2.     If R is dirty, write it back to the disk.
+    3.     Delete R from the page table and insert P.
+    4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
 
   + NewPage：
 
-    > 1.   If all the pages in the buffer pool are pinned, return nullptr.
-    > 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
-    > 3.   Update P's metadata, zero out memory and add P to the page table.
-    > 4.   Set the page ID output parameter. Return a pointer to P.
+    1.   If all the pages in the buffer pool are pinned, return nullptr.
+    2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
+    3.   Update P's metadata, zero out memory and add P to the page table.
+    4.   Set the page ID output parameter. Return a pointer to P.
 
   + UnpinPage
 
-    > 1. Search the page_table_ to check whether the page is in the buffer pool.
-    > 2. Check whether the page is pinned or not. If it is pinned, it can't be unpinned again.
-    > 3. If the page is pinned, unpin it and update the metadata.
-    > 4. Check whether its pin number is 0 after unpinning.
+    1. Search the page_table_ to check whether the page is in the buffer pool.
+    2. Check whether the page is pinned or not. If it is pinned, it can't be unpinned again.
+    3. If the page is pinned, unpin it and update the metadata.
+    4. Check whether its pin number is 0 after unpinning.
 
   + FlushPage
 
-    > 1. Check whether the page is in the buffer pool.
-    > 2. Write the page into the disk
+    1. Check whether the page is in the buffer pool.
+    2. Write the page into the disk
 
-  + DeletePage
+  + DeletePag
 
-    > 0.   Make sure you call DeallocatePage!
-    > 1.   Search the page table for the requested page (P).
-    >      1.1   If P does not exist, return true.
-    >      1.2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
-    > 2.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
+    1. Search the page table for the requested page (P).
+       1.1   If P does not exist, return true.
+       1.2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
+    
+    2. Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
 
   ### 3. Record Manager:
 
@@ -128,17 +128,87 @@
 
   ##### 3.1.3 table_iterator
 
-  + 模块构成：table_iterator实现了对于table_heap的访问，实现了对于迭代器来说常见的++，->等操作，成员变量包括指针row_用于指示当前行，table\_heap\_用于访问当前row\_所在的table_heap
+  + 模块构成：table_iterator实现了对于table_heap的访问，实现了对于迭代器来说常见的++，->等基本运算符，成员变量包括指针row_用于指示当前行，table\_heap\_用于访问当前row\_所在的table_heap，事务指针txn(在获取row内容时使用)
+  + 功能函数：
+    + `TableIterator::operator==(TableIterator &itr)`
+    + `TableIterator::operator!=(const TableIterator &itr)`
+    + `Row &TableIterator::operator*()`
+    + `Row *TableIterator::operator->()`
+    + `TableIterator &TableIterator::operator=(const TableIterator &itr)`
+    + `TableIterator TableIterator::operator++(int)`
+    + `TableIterator &TableIterator::operator++()`
 
   ##### 3.1.4 record instances
 
-  
+  + 模块描述：此部分主要是数据库中的具体记录，包括column, Schema, Field, Row，Schema描述了一个数据表或者索引的结构，Column用于描述数据表中某一列的定义属性，Row用于描述数据表中某一行的数据，Field对应一条记录(一个row)里某一个字段的数据信息
+
+  + 模块实现：主体部分由框架给出，个人主要实现了四种对象的序列化和反序列化操作.
+
+  #### 3.2 实现细节
+
+  ##### 3.2.1 Serialize and DisSerialize
+
+  + 对于Field对象：由于他只是某一个row里一个字段，所以在序列化和反序列化时我们仅用根据field中存储的数据类型(char, int float)将Union中的相应数据存入到内存或者从内存中读取到对象.
+  + 对于Row对象：由于一个Row中有一个field数组，而实际上field的具体数据可能为空(对应数据表中的NULL)，因此我们需要一个位图来标识field中的数据是否为空。因此我们首先将field的数目存入到内存中(用于获取Bitmap)，再创建一个Bitmap并存入到内存中，最后才将field中的具体数据存入内存。反序列化时，首先读出field_count，再读出bitmap，最后调用field中实现的反序列化操作
+  + 对于Column和Schema对象：Column仅用将所存储的各种属性存入内存，Schema也仅用将存储的Column数组和is_manage标识，magic_num存入内存即可.
+
+  ##### 3.2.2 table_iterator:
+
+  + 成员属性定义：
+
+    ```c++
+    TableHeap *table_heap; //The table heap pointer
+    Row *row; //Traverse the each row in the table
+    Transaction *txn; //Used for GetTuple operation
+    ```
+
+  + 后置++操作：首先创建当前Iterator的副本，根据iterator中的row获取所在页面，在通过梭子啊页面获取下一条记录。获取下一条记录可能有三种情况，第一种是直接获取到下一条记录，第二种是当前记录是该页面的最后一条记录，需要获取下一个页面的第一条记录，第三种是该记录是tableheap里的最后一条记录，需要将Iterator设置为nullptr
+
+  ##### 3.2.3 table_heap
+
+  + 成员属性定义：
+
+    ```c++
+    BufferPoolManager *buffer_pool_manager_;  //内存池管理器
+    page_id_t first_page_id_; //数据表中第一个tablepage的Id
+    Schema *schema_; //整张数据表的结构
+    LogManager *log_manager_;
+    LockManager *lock_manager_;
+    ```
+
+  + InsertTable()：
+
+    首先判断堆表中是否存在page，如果不存在则通过内存池分配一个新的page，然后在这个page里进行插入，插入后对这个page进行Unpin释放
+
+  + UpdateTable()：
+
+    首先根据输入的rid在堆表中进行页面获取，检查堆表中是否存在该page，然后将旧的row内容读出到old_row内容，接着调用page的UpdateTuple操作进行更新。更新分为三种情况，一种是直接更新成功，一种是返回错误并返回内存不够的message信息，此时我们开辟一个新的页面，将更新的内容插入到新的页面中，并对原来的row进行标记删除，等待合适的时机进行删除
+
+  + Applydelete()：
+
+    首先根据rid获取该row所在的页面，调用page的ApplyDelete进行删除
+
+  + GetTuple()：
+
+    首先根据rid获取该row所在的页面，调用page的Gettuple()进行row内容的获取。而在page的底层实现中，
+
+  + Begin()：
+
+    从数据页中获取到first_row，将其和this指针作为TableIterator返回
 
   ### 4. Index Manager
 
   #### 4.1 模块介绍
 
+  + 功能介绍：Index Manager 负责数据表索引的实现和管理，包括：索引的创建和删除，索引键的等值查找，索引键的范围查找（返回对应的迭代器），以及插入和删除键值等操作，并对外提供相应的接口。
+
+  ##### 4.1.1 B+ tree leaf page
+
+  ![image-20230524132141392](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524132141392.png)
+
   
+
+  ##### 4.1.2 B+ tree internal page
 
   #### 4.2 具体实现细节
 

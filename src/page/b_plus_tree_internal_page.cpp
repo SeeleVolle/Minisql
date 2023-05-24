@@ -19,6 +19,12 @@
  * max page size
  */
 void InternalPage::Init(page_id_t page_id, page_id_t parent_id, int key_size, int max_size) {
+  this->SetPageId(page_id);
+  this->SetParentPageId(parent_id);
+  this->SetKeySize(key_size);
+  this->SetMaxSize(max_size);
+  this->SetPageType(IndexPageType::INTERNAL_PAGE);
+  this->SetSize(0);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -65,7 +71,20 @@ void InternalPage::PairCopy(void *dest, void *src, int pair_num) {
  * 用了二分查找
  */
 page_id_t InternalPage::Lookup(const GenericKey *key, const KeyManager &KM) {
-  return INVALID_PAGE_ID;
+  int left = 1, right = this->GetSize() - 1;
+  while(left <= right) {
+    int mid = (left + right) / 2;
+    if (KM.CompareKeys(key, KeyAt(mid)) < 0) {
+      right = mid - 1;
+    }
+    else if(KM.CompareKeys(key, KeyAt(mid)) > 0) {
+      left = mid + 1;
+    }
+    else {
+      return ValueAt(mid);
+    }
+  }
+  return -1; // For not found
 }
 
 /*****************************************************************************
@@ -73,11 +92,15 @@ page_id_t InternalPage::Lookup(const GenericKey *key, const KeyManager &KM) {
  *****************************************************************************/
 /*
  * Populate new root page with old_value + new_key & new_value
- * When the insertion cause overflow from leaf page all the way upto the root
+ * When the insertion cause overflow from leaf page all the way up to the root
  * page, you should create a new root page and populate its elements.
  * NOTE: This method is only called within InsertIntoParent()(b_plus_tree.cpp)
  */
 void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
+  this->SetSize(2);
+  this->SetValueAt(0, old_value);
+  this->SetKeyAt(1, new_key);
+  this->SetValueAt(1, new_value);
 }
 
 /*
@@ -86,7 +109,11 @@ void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_k
  * @return:  new size after insertion
  */
 int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
-  return 0;
+  int index = ValueIndex(old_value);
+  this->SetValueAt(index + 1, new_value);
+  this->SetKeyAt(index + 1, new_key);
+  this->IncreaseSize(1);
+  return this->GetSize();
 }
 
 /*****************************************************************************
@@ -97,6 +124,7 @@ int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_ke
  * buffer_pool_manager 是干嘛的？传给CopyNFrom()用于Fetch数据页
  */
 void InternalPage::MoveHalfTo(InternalPage *recipient, BufferPoolManager *buffer_pool_manager) {
+
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
@@ -105,6 +133,14 @@ void InternalPage::MoveHalfTo(InternalPage *recipient, BufferPoolManager *buffer
  *
  */
 void InternalPage::CopyNFrom(void *src, int size, BufferPoolManager *buffer_pool_manager) {
+  int old_size = this->GetSize();
+  this->PairCopy(pairs_off + old_size * pair_size, src, size);
+  this->IncreaseSize(size);
+  for(int i = old_size; i < GetSize(); i++){
+    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i)));
+    ASSERT(child != nullptr, "child is nullptr in the CopyNfrom function\n");
+    child->SetParentPageId(this->GetPageId());
+  }
 }
 
 /*****************************************************************************

@@ -6,7 +6,7 @@
 #include "common/config.h"
 
 /**
- * Database use the one as index roots page page to store all
+ * Database use the one as index roots page to store all
  * index's root page id
  *
  * Format (size in byte):

@@ -10,6 +10,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     TablePage *newpage = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
     newpage->Init(new_page_id, INVALID_PAGE_ID, log_manager_, txn);
     newpage->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
+    buffer_pool_manager_->UnpinPage(newpage->GetTablePageId(), true);
     return true;
   }
   //There is at least one page in the page chain table
@@ -61,7 +62,6 @@ bool TableHeap::UpdateTuple(Row &row, const RowId &rid, Transaction *txn) {
   std::string log;
   //2. Update the tuple from the page, if there is not enough space, allocate a new page
   row.SetRowId(rid);
-  //For Debug
   while(page->UpdateTuple(row, old_row, schema_, txn, lock_manager_, log_manager_, log) == false)
   {
     if(log == "Not enough space to update, need to insert into another ."){
@@ -169,5 +169,5 @@ TableIterator TableHeap::End() {
 //    row_id = next_row_id;
 //  }
 //  return TableIterator(this, row_id);
-    return TableIterator(this, new Row(), nullptr);
+    return TableIterator(this, nullptr, nullptr);
 }

@@ -110,6 +110,10 @@ void InternalPage::PopulateNewRoot(const page_id_t &old_value, GenericKey *new_k
  */
 int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_key, const page_id_t &new_value) {
   int index = ValueIndex(old_value);
+  for(int i = GetSize(); i > index+1; i--) {
+    this->SetValueAt(i , ValueAt(i-1));
+    this->SetKeyAt(i, KeyAt(i-1));
+  }
   this->SetValueAt(index + 1, new_value);
   this->SetKeyAt(index + 1, new_key);
   this->IncreaseSize(1);
@@ -125,7 +129,7 @@ int InternalPage::InsertNodeAfter(const page_id_t &old_value, GenericKey *new_ke
  */
 void InternalPage::MoveHalfTo(InternalPage *recipient, BufferPoolManager *buffer_pool_manager) {
   int amount = this->GetSize() - this->GetMinSize();
-  recipient->CopyNFrom(PairPtrAt(this->GetSize()/2), amount, buffer_pool_manager);
+  recipient->CopyNFrom(PairPtrAt(this->GetMinSize()), amount, buffer_pool_manager);
   this->IncreaseSize(-1 * amount);
 }
 
@@ -139,7 +143,7 @@ void InternalPage::CopyNFrom(void *src, int size, BufferPoolManager *buffer_pool
   this->PairCopy(pairs_off + old_size * pair_size, src, size);
   this->IncreaseSize(size);
   for(int i = old_size; i < GetSize(); i++){
-    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i)));
+    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i))->GetData());
     ASSERT(child != nullptr, "child is nullptr in the CopyNfrom function\n");
     child->SetParentPageId(this->GetPageId());
     buffer_pool_manager->UnpinPage(child->GetPageId(), true);
@@ -186,12 +190,12 @@ page_id_t InternalPage::RemoveAndReturnOnlyChild() {
 void InternalPage::MoveAllTo(InternalPage *recipient, GenericKey *middle_key, BufferPoolManager *buffer_pool_manager) {
   recipient->CopyNFrom(PairPtrAt(0), GetSize(), buffer_pool_manager);
 //  recipient->SetKeyAt(0, middle_key);
-  for(int i = 0; i < GetSize(); i++){
-    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i)));
-    ASSERT(child != nullptr, "child is nullptr in the InternalPage::MoveAllTo function\n");
-    child->SetParentPageId(recipient->GetPageId());
-    buffer_pool_manager->UnpinPage(child->GetPageId(), true);
-  }
+//  for(int i = 0; i < GetSize(); i++){
+//    auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(i))->GetData());
+//    ASSERT(child != nullptr, "child is nullptr in the InternalPage::MoveAllTo function\n");
+//    child->SetParentPageId(recipient->GetPageId());
+//    buffer_pool_manager->UnpinPage(child->GetPageId(), true);
+//  }
   this->SetSize(0);
 }
 

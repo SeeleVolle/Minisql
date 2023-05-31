@@ -54,18 +54,16 @@ void LeafPage::SetNextPageId(page_id_t next_page_id) {
  */
 int LeafPage::KeyIndex(const GenericKey *key, const KeyManager &KM) {
   int left = 0, right = this->GetSize() - 1;
-  int ans;
   while(left <= right){
     int mid = left + (right - left) / 2;
-    if(KM.CompareKeys(key, KeyAt(mid)) > 0)){
-      left = mid + 1;
-    }
-    else{
-      ans = mid;
+    if(KM.CompareKeys(key, KeyAt(mid)) <= 0){
       right = mid - 1;
     }
+    else{
+      left = mid + 1;
+    }
   }
-  return ans;
+  return right + 1;
   }
 
 /*
@@ -115,13 +113,17 @@ std::pair<GenericKey *, RowId> LeafPage::GetItem(int index) {
 int LeafPage::Insert(GenericKey *key, const RowId &value, const KeyManager &KM) {
   //find the first index i so that pairs_[i].first >= key
   int index = KeyIndex(key, KM);
+//  cout<<"original key: "<<KeyAt(index)<<endl;
   //insert key and value
-  for(int i = this->GetSize(); i > index; i--){
-    this->SetKeyAt(i, KeyAt(i-1));
-    this->SetValueAt(i, ValueAt(i-1));
-  }
+//  for(int i = this->GetSize(); i > index; i--){
+//    this->SetKeyAt(i, KeyAt(i-1));
+//    this->SetValueAt(i, ValueAt(i-1));
+//  }
+  this->PairCopy(PairPtrAt(index+1), PairPtrAt(index), this->GetSize() - index);
   this->SetKeyAt(index, key);
   this->SetValueAt(index, value);
+//  cout<<"insert key: "<<key<<endl;
+//  cout<<"key: "<<KeyAt(index)<<endl;
   //Increase the page size
   this->IncreaseSize(1);
   //return page size after insertion
@@ -145,6 +147,7 @@ void LeafPage::MoveHalfTo(LeafPage *recipient) {
  * Copy starting from items, and copy {size} number of elements into me.
  */
 void LeafPage::CopyNFrom(void *src, int size) {
+  int old_size = GetSize();
   PairCopy(pairs_off + GetSize() * pair_size, src, size);
   IncreaseSize(size);
 }
@@ -159,6 +162,10 @@ void LeafPage::CopyNFrom(void *src, int size) {
  */
 bool LeafPage::Lookup(const GenericKey *key, RowId &value, const KeyManager &KM) {
   int index = KeyIndex(key, KM);
+  //For the situation that the key is bigger than every item in the list
+  if(index >= GetSize()){
+    return false;
+  }
   if(KM.CompareKeys(key, KeyAt(index)) == 0){
     value = ValueAt(index);
     return true;
@@ -176,7 +183,14 @@ bool LeafPage::Lookup(const GenericKey *key, RowId &value, const KeyManager &KM)
  * @return  page size after deletion
  */
 int LeafPage::RemoveAndDeleteRecord(const GenericKey *key, const KeyManager &KM) {
+  //find the first index i so that pairs_[i].first >= key
   int index = KeyIndex(key, KM);
+//  cout<<"RowId: "<<ValueAt(index).Get()<<endl;
+  //If the index is not exist, bigger than every item in the tree
+  if(index >= GetSize()){
+    return this->GetSize();
+  }
+  //If the key doesn't exist.
   if (KM.CompareKeys(key, KeyAt(index)) != 0){
     return this->GetSize();
   }
@@ -187,6 +201,7 @@ int LeafPage::RemoveAndDeleteRecord(const GenericKey *key, const KeyManager &KM)
     }
     this->IncreaseSize(-1);
   }
+  return this->GetSize();
 }
 
 /*****************************************************************************
@@ -199,8 +214,6 @@ int LeafPage::RemoveAndDeleteRecord(const GenericKey *key, const KeyManager &KM)
 void LeafPage::MoveAllTo(LeafPage *recipient) {
   recipient->CopyNFrom(pairs_off, GetSize());
   this->SetSize(0);
-  //update the next_page id in the sibling page
-  recipient->SetNextPageId(this->GetNextPageId());
 }
 
 /*****************************************************************************
@@ -211,7 +224,7 @@ void LeafPage::MoveAllTo(LeafPage *recipient) {
  *
  */
 void LeafPage::MoveFirstToEndOf(LeafPage *recipient) {
-  recipient->CopyNFrom(pairs_off, 1);
+  recipient->CopyLastFrom(KeyAt(0), ValueAt(0));
   for(int i = 0; i < GetSize()-1; i++){
     this->SetKeyAt(i, KeyAt(i+1));
     this->SetValueAt(i, ValueAt(i+1));
@@ -232,7 +245,7 @@ void LeafPage::CopyLastFrom(GenericKey *key, const RowId value) {
  * Remove the last key & value pair from this page to "recipient" page.
  */
 void LeafPage::MoveLastToFrontOf(LeafPage *recipient) {
-  recipient->CopyNFrom(pairs_off + GetSize() * pair_size, 1);
+  recipient->CopyFirstFrom(KeyAt(GetSize()-1), ValueAt(GetSize()-1));
   this->IncreaseSize(-1);
 }
 

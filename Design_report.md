@@ -101,138 +101,137 @@
     
     2. Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
 
-  ### 3. Record Manager:
 
-  #### 3.1 模块介绍
+### 3. Record Manager:
 
-  + 总功能介绍：Record Manager模块主要用于负责管理数据库的记录，支持记录的插入，删除和查找操作。对外提供相应的接口
-  + 结构介绍：Record Manager的核心是通过堆表TableHeap来管理记录，TableHeap由table_page的双向链表构成，table_page是物理上实质存储记录(Row)的地方，所以TableHeap中是通过Row的唯一标识RowId来找到Row所属的table_page，再通过table_page中的具体实现来进行Row的插入，更新和删除. TableHeap通过实现的TableIterator来进行数据的访问
+#### 3.1 模块介绍
 
-  ##### 3.1.1 Table_page:
++ 总功能介绍：Record Manager模块主要用于负责管理数据库的记录，支持记录的插入，删除和查找操作。对外提供相应的接口
++ 结构介绍：Record Manager的核心是通过堆表TableHeap来管理记录，TableHeap由table_page的双向链表构成，table_page是物理上实质存储记录(Row)的地方，所以TableHeap中是通过Row的唯一标识RowId来找到Row所属的table_page，再通过table_page中的具体实现来进行Row的插入，更新和删除. TableHeap通过实现的TableIterator来进行数据的访问
 
-  + 模块构成：table_page的具体实现分为两个部分，table_Page外部作为双向链表的连接部分，内部tuple的插入，更新，删除部分，在删除部分分为打上逻辑上的DeletedFlag标记标识删除和物理上的实质删除，
+##### 3.1.1 Table_page:
 
-  + 物理组织：table_page作为一个数据页，大小仍然为PAGE_SIZE，物理上由table_page_header, free_space和insert_tuples所构成。table_page_header结构如下
++ 模块构成：table_page的具体实现分为两个部分，table_Page外部作为双向链表的连接部分，内部tuple的插入，更新，删除部分，在删除部分分为打上逻辑上的DeletedFlag标记标识删除和物理上的实质删除，
 
-    ![image-20230523131012435](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230523131012435.png)
++ 物理组织：table_page作为一个数据页，大小仍然为PAGE_SIZE，物理上由table_page_header, free_space和insert_tuples所构成。table_page_header结构如下
 
-    访问数据通过FreeSpacePointer以及偏移的计算来访问，每一个tuple有自己的slot_number用于访问自身的offset和size，再通过自身的offset访问该Page中的具体存储地址. 
+  ![image-20230523131012435](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230523131012435.png)
 
-  ##### 3.1.2 table_heap
+  访问数据通过FreeSpacePointer以及偏移的计算来访问，每一个tuple有自己的slot_number用于访问自身的offset和size，再通过自身的offset访问该Page中的具体存储地址. 
 
-  + 模块构成：table_heap由table_page的双向链表构成，包括创建堆表，对数据的插入，删除，更新，查询。成员变量包括一个用于page管理的buffer_pool_manager，堆表中第一个first_page_id以及整张表的结构schema_
+##### 3.1.2 table_heap
 
-  + 功能函数：
++ 模块构成：table_heap由table_page的双向链表构成，包括创建堆表，对数据的插入，删除，更新，查询。成员变量包括一个用于page管理的buffer_pool_manager，堆表中第一个first_page_id以及整张表的结构schema_
 
-    ![image-20230524083003046](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524083003046.png)
++ 功能函数：
 
-  ##### 3.1.3 table_iterator
+  ![image-20230524083003046](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524083003046.png)
 
-  + 模块构成：table_iterator实现了对于table_heap的访问，实现了对于迭代器来说常见的++，->等基本运算符，成员变量包括指针row_用于指示当前行，table\_heap\_用于访问当前row\_所在的table_heap，事务指针txn(在获取row内容时使用)
-  + 功能函数：
-    + `TableIterator::operator==(TableIterator &itr)`
-    + `TableIterator::operator!=(const TableIterator &itr)`
-    + `Row &TableIterator::operator*()`
-    + `Row *TableIterator::operator->()`
-    + `TableIterator &TableIterator::operator=(const TableIterator &itr)`
-    + `TableIterator TableIterator::operator++(int)`
-    + `TableIterator &TableIterator::operator++()`
+##### 3.1.3 table_iterator
 
-  ##### 3.1.4 record instances
++ 模块构成：table_iterator实现了对于table_heap的访问，实现了对于迭代器来说常见的++，->等基本运算符，成员变量包括指针row_用于指示当前行，table\_heap\_用于访问当前row\_所在的table_heap，事务指针txn(在获取row内容时使用)
++ 功能函数：
+  + `TableIterator::operator==(TableIterator &itr)`
+  + `TableIterator::operator!=(const TableIterator &itr)`
+  + `Row &TableIterator::operator*()`
+  + `Row *TableIterator::operator->()`
+  + `TableIterator &TableIterator::operator=(const TableIterator &itr)`
+  + `TableIterator TableIterator::operator++(int)`
+  + `TableIterator &TableIterator::operator++()`
 
-  + 模块描述：此部分主要是数据库中的具体记录，包括column, Schema, Field, Row，Schema描述了一个数据表或者索引的结构，Column用于描述数据表中某一列的定义属性，Row用于描述数据表中某一行的数据，Field对应一条记录(一个row)里某一个字段的数据信息
+##### 3.1.4 record instances
 
-  + 模块实现：主体部分由框架给出，个人主要实现了四种对象的序列化和反序列化操作.
++ 模块描述：此部分主要是数据库中的具体记录，包括column, Schema, Field, Row，Schema描述了一个数据表或者索引的结构，Column用于描述数据表中某一列的定义属性，Row用于描述数据表中某一行的数据，Field对应一条记录(一个row)里某一个字段的数据信息
 
-  #### 3.2 实现细节
++ 模块实现：主体部分由框架给出，个人主要实现了四种对象的序列化和反序列化操作.
 
-  ##### 3.2.1 Serialize and DisSerialize
+#### 3.2 实现细节
 
-  + 对于Field对象：由于他只是某一个row里一个字段，所以在序列化和反序列化时我们仅用根据field中存储的数据类型(char, int float)将Union中的相应数据存入到内存或者从内存中读取到对象.
-  + 对于Row对象：由于一个Row中有一个field数组，而实际上field的具体数据可能为空(对应数据表中的NULL)，因此我们需要一个位图来标识field中的数据是否为空。因此我们首先将field的数目存入到内存中(用于获取Bitmap)，再创建一个Bitmap并存入到内存中，最后才将field中的具体数据存入内存。反序列化时，首先读出field_count，再读出bitmap，最后调用field中实现的反序列化操作
-  + 对于Column和Schema对象：Column仅用将所存储的各种属性存入内存，Schema也仅用将存储的Column数组和is_manage标识，magic_num存入内存即可.
+##### 3.2.1 Serialize and DisSerialize
 
-  ##### 3.2.2 table_iterator:
++ 对于Field对象：由于他只是某一个row里一个字段，所以在序列化和反序列化时我们仅用根据field中存储的数据类型(char, int float)将Union中的相应数据存入到内存或者从内存中读取到对象.
++ 对于Row对象：由于一个Row中有一个field数组，而实际上field的具体数据可能为空(对应数据表中的NULL)，因此我们需要一个位图来标识field中的数据是否为空。因此我们首先将field的数目存入到内存中(用于获取Bitmap)，再创建一个Bitmap并存入到内存中，最后才将field中的具体数据存入内存。反序列化时，首先读出field_count，再读出bitmap，最后调用field中实现的反序列化操作
++ 对于Column和Schema对象：Column仅用将所存储的各种属性存入内存，Schema也仅用将存储的Column数组和is_manage标识，magic_num存入内存即可.
 
-  + 成员属性定义：
+##### 3.2.2 table_iterator:
 
-    ```c++
-    TableHeap *table_heap; //The table heap pointer
-    Row *row; //Traverse the each row in the table
-    Transaction *txn; //Used for GetTuple operation
-    ```
++ 成员属性定义：
 
-  + 后置++操作：首先创建当前Iterator的副本，根据iterator中的row获取所在页面，在通过梭子啊页面获取下一条记录。获取下一条记录可能有三种情况，第一种是直接获取到下一条记录，第二种是当前记录是该页面的最后一条记录，需要获取下一个页面的第一条记录，第三种是该记录是tableheap里的最后一条记录，需要将Iterator设置为nullptr
+  ```c++
+  TableHeap *table_heap; //The table heap pointer
+  Row *row; //Traverse the each row in the table
+  Transaction *txn; //Used for GetTuple operation
+  ```
 
-  ##### 3.2.3 table_heap
++ 后置++操作：首先创建当前Iterator的副本，根据iterator中的row获取所在页面，在通过梭子啊页面获取下一条记录。获取下一条记录可能有三种情况，第一种是直接获取到下一条记录，第二种是当前记录是该页面的最后一条记录，需要获取下一个页面的第一条记录，第三种是该记录是tableheap里的最后一条记录，需要将Iterator设置为nullptr
 
-  + 成员属性定义：
+##### 3.2.3 table_heap
 
-    ```c++
-    BufferPoolManager *buffer_pool_manager_;  //内存池管理器
-    page_id_t first_page_id_; //数据表中第一个tablepage的Id
-    Schema *schema_; //整张数据表的结构
-    LogManager *log_manager_;
-    LockManager *lock_manager_;
-    ```
++ 成员属性定义：
 
-  + InsertTable()：
+  ```c++
+  BufferPoolManager *buffer_pool_manager_;  //内存池管理器
+  page_id_t first_page_id_; //数据表中第一个tablepage的Id
+  Schema *schema_; //整张数据表的结构
+  LogManager *log_manager_;
+  LockManager *lock_manager_;
+  ```
 
-    首先判断堆表中是否存在page，如果不存在则通过内存池分配一个新的page，然后在这个page里进行插入，插入后对这个page进行Unpin释放
++ InsertTable()：
 
-  + UpdateTable()：
+  首先判断堆表中是否存在page，如果不存在则通过内存池分配一个新的page，然后在这个page里进行插入，插入后对这个page进行Unpin释放
 
-    首先根据输入的rid在堆表中进行页面获取，检查堆表中是否存在该page，然后将旧的row内容读出到old_row内容，接着调用page的UpdateTuple操作进行更新。更新分为三种情况，一种是直接更新成功，一种是返回错误并返回内存不够的message信息，此时我们开辟一个新的页面，将更新的内容插入到新的页面中，并对原来的row进行标记删除，等待合适的时机进行删除
++ UpdateTable()：
 
-  + Applydelete()：
+  首先根据输入的rid在堆表中进行页面获取，检查堆表中是否存在该page，然后将旧的row内容读出到old_row内容，接着调用page的UpdateTuple操作进行更新。更新分为三种情况，一种是直接更新成功，一种是返回错误并返回内存不够的message信息，此时我们开辟一个新的页面，将更新的内容插入到新的页面中，并对原来的row进行标记删除，等待合适的时机进行删除
 
-    首先根据rid获取该row所在的页面，调用page的ApplyDelete进行删除
++ Applydelete()：
 
-  + GetTuple()：
+  首先根据rid获取该row所在的页面，调用page的ApplyDelete进行删除
 
-    首先根据rid获取该row所在的页面，调用page的Gettuple()进行row内容的获取。而在page的底层实现中，
++ GetTuple()：
 
-  + Begin()：
+  首先根据rid获取该row所在的页面，调用page的Gettuple()进行row内容的获取。而在page的底层实现中，
 
-    从数据页中获取到first_row，将其和this指针作为TableIterator返回
++ Begin()：
 
-  ### 4. Index Manager
+  从数据页中获取到first_row，将其和this指针作为TableIterator返回
 
-  #### 4.1 模块介绍
+### 4. Index Manager
 
-  + 功能介绍：Index Manager 负责数据表索引的实现和管理，包括：索引的创建和删除，索引键的等值查找，索引键的范围查找（返回对应的迭代器），以及插入和删除键值等操作，并对外提供相应的接口。
+#### 4.1 模块介绍
 
-  ##### 4.1.1 B+ tree leaf page
++ 功能介绍：Index Manager 负责数据表索引的实现和管理，包括：索引的创建和删除，索引键的等值查找，索引键的范围查找（返回对应的迭代器），以及插入和删除键值等操作，并对外提供相应的接口。
 
-  ![image-20230524132141392](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524132141392.png)
+##### 4.1.1 B+ tree leaf page
 
-  
+![image-20230524132141392](C:\Users\squarehuang\AppData\Roaming\Typora\typora-user-images\image-20230524132141392.png)
 
-  ##### 4.1.2 B+ tree internal page
+##### 4.1.2 B+ tree internal page
 
-  #### 4.2 具体实现细节
+#### 4.2 具体实现细节
 
-  
 
-  ### 5. Catalog Manager
 
-  #### 5.1 模块介绍
+### 5. Catalog Manager
 
-  #### 5.2 具体实现细节
+#### 5.1 模块介绍
 
-  
+#### 5.2 具体实现细节
 
-  ### 6. Planner Manager
 
-  #### 6.1 模块介绍
 
-  #### 6.2 具体实现细节
+### 6. Planner Manager
 
-  
+#### 6.1 模块介绍
 
-  ### 7. Executor Manager
+#### 6.2 具体实现细节
 
-  #### 7.1 模块介绍
 
-  #### 7.2 具体实现细节
+
+### 7. Executor Manager
+
+#### 7.1 模块介绍
+
+#### 7.2 具体实现细节
 

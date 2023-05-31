@@ -55,8 +55,8 @@ CatalogMeta *CatalogMeta::DeserializeFrom(char *buf) {
  * TODO: Student Implement
  */
 uint32_t CatalogMeta::GetSerializedSize() const {
-  ASSERT(false, "Not Implemented yet");
-  return 0;
+  return 3 * sizeof(uint32_t) + table_meta_pages_.size() * (sizeof(table_id_t) + sizeof(page_id_t)) +
+         index_meta_pages_.size() * (sizeof(index_id_t) + sizeof(page_id_t));
 }
 
 CatalogMeta::CatalogMeta() {}
@@ -67,7 +67,27 @@ CatalogMeta::CatalogMeta() {}
 CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManager *lock_manager,
                                LogManager *log_manager, bool init)
     : buffer_pool_manager_(buffer_pool_manager), lock_manager_(lock_manager), log_manager_(log_manager) {
-    ASSERT(false, "Not Implemented yet");
+
+  if(init){
+    //Initialize the catalog_meta_
+    catalog_meta_ = new CatalogMeta();
+    next_table_id_ = next_index_id_ = 0;
+  }
+  else{
+    //Get the catalog meta
+    Page * catalog_page = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);
+    catalog_meta_ = CatalogMeta::DeserializeFrom(catalog_page->GetData());
+    //Load the tables into the catalog manager
+    for(auto iter : catalog_meta_->table_meta_pages_){
+      ASSERT(LoadTable(iter.first, iter.second) == DB_SUCCESS, "Failed to load table into catalog manager");
+    }
+    //Load the indexs into the catalog manager
+    for(auto iter : catalog_meta_->index_meta_pages_){
+      ASSERT(LoadIndex(iter.first, iter.second) == DB_SUCCESS, "Failed to load index into catalog manager");
+    }
+    next_table_id_ = catalog_meta_->table_meta_pages_.begin()->first;
+    next_index_id_ = catalog_meta_->index_meta_pages_.begin()->first;
+  }
 }
 
 CatalogManager::~CatalogManager() {
@@ -161,16 +181,22 @@ dberr_t CatalogManager::FlushCatalogMetaPage() const {
  * TODO: Student Implement
  */
 dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t page_id) {
-  // ASSERT(false, "Not Implemented yet");
-  return DB_FAILED;
+  Page * table_page = buffer_pool_manager_->FetchPage(page_id);
+  if(table_page == nullptr){
+    LOG(ERROR) << "Failed to fetch table page in the LoadTable" << endl;
+    return DB_FAILED;
+  }
+  TableMetadata * meta_data;
+  TableMetadata::DeserializeFrom(table_page->GetData(), meta_data);
+  TableHeap *table_heap = new TableHeap(buffer_pool_manager_, meta_data->GetSchema(), nullptr,  log_manager_ ,lock_manager_);
+  TableInfo * table_info;
+  table_info->Init(meta_data, )
 }
 
 /**
  * TODO: Student Implement
  */
 dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t page_id) {
-  // ASSERT(false, "Not Implemented yet");
-  return DB_FAILED;
 }
 
 /**

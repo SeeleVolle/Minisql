@@ -49,6 +49,7 @@ uint32_t IndexMetadata::GetSerializedSize() const {
 uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta) {
     if (index_meta != nullptr) {
         LOG(WARNING) << "Pointer object index info is not null in table info deserialize." << std::endl;
+        index_meta = nullptr;
     }
     char *p = buf;
     // magic num
@@ -78,6 +79,7 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta) {
     }
     // allocate space for index meta data
     index_meta = new IndexMetadata(index_id, index_name, table_id, key_map);
+    ASSERT(buf - p == index_meta->GetSerializedSize(), "Unexpected deserialize size.\n");
     return buf - p;
 }
 

@@ -44,7 +44,7 @@ uint32_t Column::SerializeTo(char *buf) const {
   offset += sizeof(uint32_t);
   //Name length
   MACH_WRITE_TO(size_t, buf + offset, name_.length());
-  offset += sizeof(name_.length());
+  offset += sizeof(size_t);
   //Name content
   MACH_WRITE_STRING(buf+ offset, name_);
   offset += name_.length();
@@ -63,6 +63,7 @@ uint32_t Column::SerializeTo(char *buf) const {
   //unique flag
   MACH_WRITE_TO(bool, buf + offset, unique_);
   offset += sizeof(bool);
+  ASSERT(offset == GetSerializedSize(), "Wrong serialized size in Column::SerializeTo.\n");
   return offset;
 }
 
@@ -70,9 +71,7 @@ uint32_t Column::SerializeTo(char *buf) const {
  * TODO: Student Implement
  */
 uint32_t Column::GetSerializedSize() const {
-  uint32_t size = 0;
-  size = size + 3*sizeof(uint32_t) + 2*sizeof(bool) + sizeof(type_) + name_.length();
-  return size;
+  return 3 * sizeof(uint32_t) + sizeof(size_t) + sizeof(type_) + name_.length() + 2 * sizeof(bool);
 }
 
 /**
@@ -81,6 +80,7 @@ uint32_t Column::GetSerializedSize() const {
 uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
   if(column != nullptr) {
     LOG(WARNING) << "Column is not nullptr, delete it first.\n";
+    column = nullptr;
   }
   uint32_t offset = 0;
   uint32_t magic_num =  MACH_READ_UINT32(buf + offset);
@@ -90,7 +90,8 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
   size_t length = MACH_READ_FROM(size_t, buf+offset);
   offset += sizeof(size_t);
   //Name content
-  char *content = new char[length];
+  char *content = new char[length+1];
+  memset(content, 0, length+1);
   memcpy(content, buf+offset, length);
   std::string name(content);
   offset += sizeof(char) * length;
@@ -115,5 +116,6 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
   } else {
     column = new Column(name, type, position, nullable, unique);
   }
+  ASSERT(offset == column->GetSerializedSize(), "Wrong serialized size in Column::DeserializeFrom.\n");
   return offset;
 }

@@ -17,6 +17,8 @@ uint32_t Schema::SerializeTo(char *buf) const {
   }
   //is_manage
   MACH_WRITE_TO(bool, buf + offset, this->is_manage_);
+  offset += sizeof(bool);
+  ASSERT(offset == this->GetSerializedSize(), "Unexpected serialize size in schema serialize.\n");
   return offset;
 }
 
@@ -32,6 +34,7 @@ uint32_t Schema::GetSerializedSize() const {
 uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema) {
   if(schema != nullptr){
     LOG(WARNING) << "Pointer to column is not null in column deserialize." << std::endl;
+    schema = nullptr;
   }
   uint32_t offset = 0;
   //Check magic_number
@@ -48,11 +51,19 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema) {
   for(uint32_t i = 0; i < column_count; i++){
     offset += Column::DeserializeFrom(buf + offset, schema_column);
     columns.push_back(schema_column);
+    schema_column = nullptr;
   }
+//  for (int i = 0; i < 3; ++i) {
+//    std::cout<<"colunmns["<<i<<"]"<<columns[i]->GetSerializedSize()<<std::endl;
+//  }
   //is_manage
   bool is_manage = MACH_READ_FROM(bool, buf + offset);
   offset += sizeof(bool);
   //Allocate a new Schema
   schema = new Schema(columns, is_manage);
+//  for (int i = 0; i < 3; ++i) {
+//    std::cout<<"colunmns["<<i<<"]"<<schema->columns_[i]->GetSerializedSize()<<std::endl;
+//  }
+  ASSERT(offset == schema->GetSerializedSize(), "Unexpected deserialize size in schema deserialize.\n");
   return offset;
 }

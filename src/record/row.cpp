@@ -5,7 +5,7 @@
  */
 uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
   ASSERT(schema != nullptr, "Invalid schema before serialize.");
-  ASSERT(schema->GetColumnCount() == fields_.size(), "Fields size do not match schema's column size.");
+  ASSERT(schema->GetColumnCount() == fields_.size(), "Fields size do not match schema's column size.\n");
   uint32_t offset = 0;
   size_t field_count = this->GetFieldCount();
   //If the field count is 0, means the row is empty
@@ -33,11 +33,17 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
   for(int i=0; i < field_count; i++){
     offset = offset + fields_[i]->SerializeTo(buf + offset);
   }
+  ASSERT(offset == this->GetSerializedSize(schema), "Unexpected serialize size in Row::Serialize.");
   return offset;
 }
 
 uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
-  ASSERT(schema != nullptr, "Invalid schema before serialize.");
+  if(schema != nullptr)
+  {
+    LOG(WARNING) << "Row is not nullptr, delete it first.\n";
+    schema = nullptr;
+  }
+//  ASSERT(schema != nullptr, "Invalid schema before serialize.");
   ASSERT(fields_.empty(), "Non empty field in row.");
   uint32_t offset = 0;
   //Read the field count from the buf
@@ -57,6 +63,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
     offset += Field::DeserializeFrom(buf + offset, schema->GetColumn(i)->GetType(), &new_field, bitmap[i / 8] & (1<< (i % 8)));
     this->fields_.push_back(new_field);
   }
+  ASSERT(offset == this->GetSerializedSize(schema), "Unexpected deserialize size in Row::Deserialize.\n");
   return offset;
 }
 

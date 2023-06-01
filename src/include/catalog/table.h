@@ -62,6 +62,7 @@ class TableInfo {
     table_meta_ = table_meta;
     table_heap_ = table_heap;
   }
+  inline TableMetadata *GetTableMetadata() const { return table_meta_;}
 
   inline TableHeap *GetTableHeap() const { return table_heap_; }
 

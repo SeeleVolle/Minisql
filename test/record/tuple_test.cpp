@@ -26,6 +26,32 @@ Field char_fields[] = {Field(TypeId::kTypeChar, chars[0], strlen(chars[0]), fals
                        Field(TypeId::kTypeChar, chars[3], 1, false)};
 Field null_fields[] = {Field(TypeId::kTypeInt), Field(TypeId::kTypeFloat), Field(TypeId::kTypeChar)};
 
+Column test_Column[3] = {new Column("id", TypeId::kTypeInt, 0, false, false),
+                         new Column("name", TypeId::kTypeChar, 64, 1, true, false),
+                         new Column("account", TypeId::kTypeFloat, 2, true, false)};
+
+TEST(TupleTest, ColumSerializeDeserializeTest){
+  char buffer[PAGE_SIZE];
+  memset(buffer, 0, sizeof(buffer));
+  // Serialize phase
+  uint32_t offset = 0, offset2 = 0;
+  for(int i = 0; i < 3; i++){
+    offset += test_Column[i].SerializeTo(buffer + offset);
+  }
+  Column *df = nullptr;
+  // Deserialize phase
+  for(int i = 0; i < 3; i++){
+    offset2 += Column::DeserializeFrom(buffer + offset2, *&df);
+    EXPECT_EQ(test_Column[i].GetType(), df->GetType());
+    EXPECT_EQ(test_Column[i].GetLength(), df->GetLength());
+    EXPECT_EQ(test_Column[i].GetName(), df->GetName());
+    EXPECT_EQ(test_Column[i].IsNullable(), df->IsNullable());
+    EXPECT_EQ(test_Column[i].IsUnique(), df->IsUnique());
+    EXPECT_EQ(test_Column[i].GetTableInd(), df->GetTableInd());
+  }
+  EXPECT_EQ(offset, offset2);
+}
+
 TEST(TupleTest, FieldSerializeDeserializeTest) {
   char buffer[PAGE_SIZE];
   memset(buffer, 0, sizeof(buffer));

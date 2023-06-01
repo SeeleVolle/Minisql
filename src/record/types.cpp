@@ -29,18 +29,19 @@ uint32_t Type::SerializeTo(const Field &field, char *buf) const {
   }
   uint32_t offset = 0;
   offset = this->GetInstance(type_id_)->SerializeTo(field, buf);
+  ASSERT(offset == this->GetInstance(type_id_)->GetSerializedSize(field, field.IsNull()), "offset is not equal to GetLength(field) in Type::SerializeTo\n");
   return offset;
 }
 
 //DeserializeFrom the data in this type
 uint32_t Type::DeserializeFrom(char *storage, Field **field, bool is_null) const {
   ASSERT(storage != nullptr, "storage is null in Type::DeserializeFrom");
-  ASSERT(field != nullptr, "field is null in Type::DeserializeFrom");
   uint32_t offset = 0;
   if(type_id_ != TypeId::kTypeChar && type_id_ != TypeId::kTypeInt && type_id_ != TypeId::kTypeFloat) {
     ASSERT(false, "type_id_ is not in the TypeId, assert false");
   }
   offset = this->GetInstance(type_id_)->DeserializeFrom(storage, field, is_null);
+  ASSERT(offset == this->GetInstance(type_id_)->GetSerializedSize(**field, is_null), "offset is not equal to GetLength(field) in Type::DeserializeFrom\n");
   return offset;
 }
 

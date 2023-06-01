@@ -17,6 +17,9 @@
 class CatalogMeta {
   friend class CatalogManager;
 
+ private:
+  explicit CatalogMeta();
+
  public:
   void SerializeTo(char *buf) const;
 
@@ -24,12 +27,13 @@ class CatalogMeta {
 
   uint32_t GetSerializedSize() const;
 
+  //Why is the rbegin()->first, change to the first+1 and see whether is correct
   inline table_id_t GetNextTableId() const {
-    return table_meta_pages_.size() == 0 ? 0 : table_meta_pages_.rbegin()->first;
+    return table_meta_pages_.size() == 0 ? 0 : table_meta_pages_.rbegin()->first + 1;
   }
 
   inline index_id_t GetNextIndexId() const {
-    return index_meta_pages_.size() == 0 ? 0 : index_meta_pages_.rbegin()->first;
+    return index_meta_pages_.size() == 0 ? 0 : index_meta_pages_.rbegin()->first + 1;
   }
 
   static CatalogMeta *NewInstance() { return new CatalogMeta(); }
@@ -44,6 +48,10 @@ class CatalogMeta {
    */
   inline std::map<index_id_t, page_id_t> *GetIndexMetaPages() { return &index_meta_pages_; }
 
+  void AddTableMetaPage(table_id_t table_id, page_id_t page_id){ table_meta_pages_.emplace(table_id, page_id);}
+
+  void AddIndexMetaPage(index_id_t index_id, page_id_t page_id) { index_meta_pages_.emplace(index_id, page_id);}
+
   /**
    * Delete index meta data and its meta page.
    */
@@ -56,8 +64,8 @@ class CatalogMeta {
     return true;
   }
 
- private:
-  CatalogMeta();
+
+
 
  private:
   static constexpr uint32_t CATALOG_METADATA_MAGIC_NUM = 89849;

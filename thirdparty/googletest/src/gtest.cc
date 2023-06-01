@@ -3011,6 +3011,7 @@ void TestSuite::Run() {
 
   start_timestamp_ = internal::GetTimeInMillis();
   internal::Timer timer;
+//  std::cout<<"total_test_count(): "<<total_test_count()<<std::endl;
   for (int i = 0; i < total_test_count(); i++) {
     GetMutableTestInfo(i)->Run();
     if (GTEST_FLAG(fail_fast) && GetMutableTestInfo(i)->result()->Failed()) {

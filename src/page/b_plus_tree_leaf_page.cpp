@@ -54,9 +54,11 @@ void LeafPage::SetNextPageId(page_id_t next_page_id) {
  */
 int LeafPage::KeyIndex(const GenericKey *key, const KeyManager &KM) {
   int left = 0, right = this->GetSize() - 1;
+//  int ans = this->GetSize();
   while(left <= right){
     int mid = left + (right - left) / 2;
     if(KM.CompareKeys(key, KeyAt(mid)) <= 0){
+//      ans = mid;
       right = mid - 1;
     }
     else{

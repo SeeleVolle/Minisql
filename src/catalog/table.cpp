@@ -35,6 +35,7 @@ uint32_t TableMetadata::GetSerializedSize() const {
 uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta) {
     if (table_meta != nullptr) {
         LOG(WARNING) << "Pointer object table info is not null in table info deserialize." << std::endl;
+        table_meta = nullptr;
     }
     char *p = buf;
     // magic num
@@ -57,6 +58,7 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta) {
     buf += TableSchema::DeserializeFrom(buf, schema);
     // allocate space for table metadata
     table_meta = new TableMetadata(table_id, table_name, root_page_id, schema);
+    ASSERT(buf - p == table_meta->GetSerializedSize(), "Unexpected deserialize size.");
     return buf - p;
 }
 

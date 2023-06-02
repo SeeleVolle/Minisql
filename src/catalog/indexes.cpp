@@ -109,3 +109,4 @@ Index *IndexInfo::CreateIndex(BufferPoolManager *buffer_pool_manager, const stri
   }
   return new BPlusTreeIndex(meta_data_->index_id_, key_schema_, max_size, buffer_pool_manager);
 }
+

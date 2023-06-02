@@ -541,6 +541,9 @@ IndexIterator BPlusTree::End() {
  * Note: the leaf page is pinned, you need to unpin it after use.
  */
 Page *BPlusTree::FindLeafPage(const GenericKey *key, page_id_t page_id, bool leftMost) {
+  if(root_page_id_ == INVALID_PAGE_ID){
+    ASSERT(false, "The root page is invalid when finding the leaf page\n");
+  }
   if(leftMost == false){
     Page * root_page = buffer_pool_manager_->FetchPage(root_page_id_);
     InternalPage *page = reinterpret_cast<InternalPage *>(root_page->GetData());

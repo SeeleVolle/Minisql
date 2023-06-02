@@ -182,13 +182,12 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   }
   table_info = tables_[table_names_[table_name]];
   //Then check the index whether exists or not
-  if(index_names_.find(index_name) != index_names_.end()){
+  if(index_names_[table_name].find(index_name) != index_names_[table_name].end()){
     return DB_INDEX_ALREADY_EXIST;
   }
   index_info = IndexInfo::Create();
   //Create the index
   std::vector<uint32_t> key_map;
-  std::unordered_map<std::string, uint32_t>name_map;
   for(int i=0; i < index_keys.size(); i++){
     uint32_t column_index;
     if(table_info->GetSchema()->GetColumnIndex(index_keys[i], column_index) == DB_COLUMN_NAME_NOT_EXIST)
@@ -375,9 +374,20 @@ dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t pag
   TableInfo * table_info = tables_[meta_data->GetTableId()];
   IndexInfo * index_info = IndexInfo::Create();
   index_info->Init(meta_data, table_info, buffer_pool_manager_);
+  //Insert the entry
+  for(TableIterator table_iter = table_info->GetTableHeap()->Begin(nullptr); table_iter != table_info->GetTableHeap()->End(); table_iter++){
+    std::vector<Field> fields;
+    for(auto key_iter = meta_data->GetKeyMapping().begin(); key_iter != meta_data->GetKeyMapping().end(); key_iter++){
+      fields.push_back(*(table_iter->GetField(*key_iter)));
+    }
+    Row row(fields);
+    RowId rid(table_iter->GetRowId().GetPageId(), table_iter->GetRowId().GetSlotNum());
+    index_info->GetIndex()->InsertEntry(row, rid, nullptr);
+  }
   index_names_[table_info->GetTableName()].emplace(meta_data->GetIndexName(), meta_data->GetIndexId());
+  cout<<"Index_name: "<<meta_data->GetIndexName()<<" Index_id: "<<index_names_[table_info->GetTableName()].at(meta_data->GetIndexName())<<endl;
   indexes_.emplace(meta_data->GetIndexId(), index_info);
-
+//  IndexInfo * tset_info = indexes_[meta_data->GetIndexId()];
   buffer_pool_manager_->UnpinPage(page_id, true);
   return DB_SUCCESS;
 }

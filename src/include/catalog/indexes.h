@@ -70,7 +70,6 @@ class IndexInfo {
     meta_data_ = meta_data;
     key_schema_ = Schema::ShallowCopySchema(table_info->GetSchema(), meta_data->GetKeyMapping());
     index_ = CreateIndex(buffer_pool_manager, "bptree");
-
   }
 
   inline IndexMetadata *GetIndexMetadata() { return meta_data_; }

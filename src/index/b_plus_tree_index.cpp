@@ -15,6 +15,9 @@ dberr_t BPlusTreeIndex::InsertEntry(const Row &key, RowId row_id, Transaction *t
   processor_.SerializeFromKey(index_key, key, key_schema_);
 
   bool status = container_.Insert(index_key, row_id, txn);
+  TreeFileManagers mgr("tree_");
+  container_.PrintTree(mgr[5]);
+
   delete index_key;
   //  TreeFileManagers mgr("tree_");
   //  static int i = 0;

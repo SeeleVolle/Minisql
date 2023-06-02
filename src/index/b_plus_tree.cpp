@@ -472,6 +472,7 @@ bool BPlusTree::AdjustRoot(BPlusTreePage *old_root_node) {
     this->root_page_id_ = root_page->RemoveAndReturnOnlyChild();
     UpdateRootPageId(true);
     LeafPage * new_root_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(this->root_page_id_)->GetData());
+    new_root_page->SetPageId(this->root_page_id_);
     new_root_page->SetParentPageId(INVALID_PAGE_ID);
     //Unpin the old_page_id and new_root_page
     buffer_pool_manager_->UnpinPage(this->root_page_id_, true);

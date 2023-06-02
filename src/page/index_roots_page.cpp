@@ -33,7 +33,7 @@ bool IndexRootsPage::Update(const index_id_t index_id, const page_id_t root_id) 
   return true;
 }
 
-bool IndexRootsPage::GetRootId(const index_id_t index_id, page_id_t *root_id) {
+bool IndexRootsPage::GetIndexRootId(const index_id_t index_id, page_id_t *root_id) {
   auto index = FindIndex(index_id);
   if (index == -1) {
     return false;

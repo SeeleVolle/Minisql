@@ -141,7 +141,7 @@ void TableHeap::DeleteTable(page_id_t page_id) {
 TableIterator TableHeap::Begin(Transaction *txn) {
   page_id_t first_page_id = this->GetFirstPageId();
   TablePage *first_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id));
-  RowId *row_id;
+  RowId *row_id = new RowId();
   first_page->GetFirstTupleRid(row_id);
   Row *first_row = new Row(*row_id);
   first_page->GetTuple(first_row, schema_, txn, lock_manager_);

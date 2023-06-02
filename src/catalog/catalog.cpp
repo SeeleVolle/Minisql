@@ -1,4 +1,5 @@
 #include "catalog/catalog.h"
+#include "page/index_roots_page.h"
 
 void CatalogMeta::SerializeTo(char *buf) const {
     ASSERT(GetSerializedSize() <= PAGE_SIZE, "Failed to serialize catalog metadata to disk.");
@@ -141,7 +142,10 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   table_names_.emplace(table_name, next_table_id_);
   tables_.emplace(next_table_id_, table_info);
   //Add the table into the catalog meta
-  catalog_meta_->AddTableMetaPage(next_table_id_, table_heap->GetFirstPageId());
+  page_id_t table_page_id;
+  Page * table_page = buffer_pool_manager_->NewPage(table_page_id);
+  table_metadata->SerializeTo(table_page->GetData());
+  catalog_meta_->AddTableMetaPage(next_table_id_, table_page_id);
   next_table_id_++;
   return DB_SUCCESS;
 }
@@ -188,7 +192,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   index_info = IndexInfo::Create();
   //Create the index
   std::vector<uint32_t> key_map;
-  for(int i=0; i < index_keys.size(); i++){
+  for(uint32_t i=0; i < index_keys.size(); i++){
     uint32_t column_index;
     if(table_info->GetSchema()->GetColumnIndex(index_keys[i], column_index) == DB_COLUMN_NAME_NOT_EXIST)
       return DB_COLUMN_NAME_NOT_EXIST;
@@ -200,7 +204,10 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   index_names_[table_name].emplace(index_name, next_index_id_);
   indexes_.emplace(next_index_id_, index_info);
   //Add the index into the catalog meta
-  catalog_meta_->AddIndexMetaPage(next_index_id_, INDEX_ROOTS_PAGE_ID);
+  page_id_t index_page_id;
+  Page * index_page = buffer_pool_manager_->NewPage(index_page_id);
+  index_metadata->SerializeTo(index_page->GetData());
+  catalog_meta_->AddIndexMetaPage(next_index_id_, index_page_id);
   next_index_id_++;
   return DB_SUCCESS;
 }
@@ -305,12 +312,13 @@ dberr_t CatalogManager::FlushCatalogMetaPage() const {
   data += catalog_meta_->GetSerializedSize();
   buffer_pool_manager_->UnpinPage(CATALOG_META_PAGE_ID, true);
 //  buffer_pool_manager_->FlushPage(CATALOG_META_PAGE_ID);
+
   //Serialize the table meta data
   for(auto table_iter : catalog_meta_->table_meta_pages_){
     Page * table_page = buffer_pool_manager_->FetchPage(table_iter.second);
     data = table_page->GetData();
     tables_.at(table_iter.first)->GetTableMetadata()->SerializeTo(data);
-    data += tables_.at(table_iter.first)->GetTableMetadata()->GetSerializedSize();
+//    data += tables_.at(table_iter.first)->GetTableMetadata()->GetSerializedSize();
     buffer_pool_manager_->UnpinPage(table_iter.second, true);
   }
   //Serialize the index meta data
@@ -318,7 +326,7 @@ dberr_t CatalogManager::FlushCatalogMetaPage() const {
     Page * index_page = buffer_pool_manager_->FetchPage(index_iter.second);
     data = index_page->GetData();
     indexes_.at(index_iter.first)->GetIndexMetadata()->SerializeTo(data);
-    data += indexes_.at(index_iter.first)->GetIndexMetadata()->GetSerializedSize();
+//    data += indexes_.at(index_iter.first)->GetIndexMetadata()->GetSerializedSize();
     buffer_pool_manager_->UnpinPage(index_iter.second, true);
   }
   return DB_SUCCESS;
@@ -342,13 +350,13 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
     LOG(ERROR) << "The table id doesn't match the table id in the meta data" << endl;
     return DB_FAILED;
   }
-  TableHeap *table_heap = TableHeap::Create(buffer_pool_manager_, Schema::DeepCopySchema(meta_data->GetSchema()), nullptr, log_manager_ ,lock_manager_);
+  TableHeap * table_heap = TableHeap::Create(buffer_pool_manager_, meta_data->GetFirstPageId(), Schema::DeepCopySchema(meta_data->GetSchema()), log_manager_ ,lock_manager_);
   TableInfo * table_info = TableInfo::Create();
   table_info->Init(meta_data, table_heap);
   table_names_.emplace(meta_data->GetTableName(), meta_data->GetTableId());
-  std::cout<<"Table_name: "<<meta_data->GetTableName()<<" Table_id: "<<table_names_.at(meta_data->GetTableName())<<std::endl;
+//  std::cout<<"Table_name: "<<meta_data->GetTableName()<<" Table_id: "<<table_names_.at(meta_data->GetTableName())<<std::endl;
   tables_.emplace(meta_data->GetTableId(), table_info);
-  std::cout<<"Table_id: "<<table_names_.at(meta_data->GetTableName())<<" Table_id: "<<tables_.at(table_names_.at(meta_data->GetTableName()))<<std::endl;
+//  std::cout<<"Table_id: "<<table_names_.at(meta_data->GetTableName())<<" Table_id: "<<tables_.at(table_names_.at(meta_data->GetTableName()))<<std::endl;
   buffer_pool_manager_->UnpinPage(page_id, true);
   return DB_SUCCESS;
 }
@@ -358,6 +366,7 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
  */
 dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t page_id) {
   Page * index_page = buffer_pool_manager_->FetchPage(page_id);
+  IndexRootsPage * index_root_page = reinterpret_cast<IndexRootsPage *>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
   if(index_page == nullptr){
     LOG(ERROR) << "Failed to fetch index page in the LoadIndex" << endl;
     return DB_FAILED;
@@ -371,21 +380,47 @@ dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t pag
     LOG(ERROR) << "The index id doesn't match the index id in the meta data" << endl;
     return DB_FAILED;
   }
+  page_id_t b_root_page_id = -1;
+  if(index_root_page->GetIndexRootId(index_id, &b_root_page_id) == false){
+    LOG(ERROR) << "Failed to get the index root page id in the LoadIndex" << endl;
+    return DB_FAILED;
+  }
+  InternalPage * b_root_page = reinterpret_cast<InternalPage *>((buffer_pool_manager_->FetchPage(b_root_page_id)->GetData()));
+  InternalPage * tree_page = b_root_page;
   TableInfo * table_info = tables_[meta_data->GetTableId()];
   IndexInfo * index_info = IndexInfo::Create();
   index_info->Init(meta_data, table_info, buffer_pool_manager_);
-  //Insert the entry
-  for(TableIterator table_iter = table_info->GetTableHeap()->Begin(nullptr); table_iter != table_info->GetTableHeap()->End(); table_iter++){
-    std::vector<Field> fields;
-    for(auto key_iter = meta_data->GetKeyMapping().begin(); key_iter != meta_data->GetKeyMapping().end(); key_iter++){
-      fields.push_back(*(table_iter->GetField(*key_iter)));
-    }
-    Row row(fields);
-    RowId rid(table_iter->GetRowId().GetPageId(), table_iter->GetRowId().GetSlotNum());
-    index_info->GetIndex()->InsertEntry(row, rid, nullptr);
+  BPlusTreeIndex * b_tree_index = reinterpret_cast<BPlusTreeIndex *>(index_info->GetIndex());
+  //Add the index to the index_info
+  Row row(INVALID_ROWID);
+  RowId rid(INVALID_ROWID);
+  while(tree_page->IsLeafPage() != true){
+    buffer_pool_manager_->UnpinPage(tree_page->GetPageId(), true);
+    tree_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(tree_page->ValueAt(0))->GetData());
   }
+  LeafPage *leaf_page = reinterpret_cast<LeafPage *>(tree_page);
+  while(1){
+      for(int i = 0; i < leaf_page->GetSize(); i++){
+        b_tree_index->GetKeyManager().DeserializeToKey(leaf_page->KeyAt(i), row, index_info->GetIndexKeySchema());
+        rid = leaf_page->ValueAt(i);
+        b_tree_index->InsertEntry(row, rid, nullptr);
+      }
+      buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), true);
+      if(leaf_page->GetNextPageId() == INVALID_PAGE_ID)
+        break;
+      else
+        leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(leaf_page->GetNextPageId())->GetData());
+  }
+
+//  for(auto iter = b_tree->Begin(); iter != b_tree->End(); ++iter){
+//    std::pair<GenericKey *, RowId>row_inform = *iter;
+//    b_tree_index->GetKeyManager().DeserializeToKey(row_inform.first, row, table_info->GetSchema());
+//    rid = row_inform.second;
+//    b_tree_index->InsertEntry(row, rid, nullptr);
+//  }
+
   index_names_[table_info->GetTableName()].emplace(meta_data->GetIndexName(), meta_data->GetIndexId());
-  cout<<"Index_name: "<<meta_data->GetIndexName()<<" Index_id: "<<index_names_[table_info->GetTableName()].at(meta_data->GetIndexName())<<endl;
+//  cout<<"Index_name: "<<meta_data->GetIndexName()<<" Index_id: "<<index_names_[table_info->GetTableName()].at(meta_data->GetIndexName())<<endl;
   indexes_.emplace(meta_data->GetIndexId(), index_info);
 //  IndexInfo * tset_info = indexes_[meta_data->GetIndexId()];
   buffer_pool_manager_->UnpinPage(page_id, true);

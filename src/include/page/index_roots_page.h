@@ -25,14 +25,18 @@ class IndexRootsPage {
   bool Update(const index_id_t index_id, const page_id_t root_id);
 
   // return root_id if success
-  bool GetRootId(const index_id_t index_id, page_id_t *root_id);
+  bool GetIndexRootId(const index_id_t index_id, page_id_t *root_id);
 
   int GetIndexCount() { return count_; }
 
+//  page_id_t GetRootId(index_id_t index_id){
+//    return roots_[FindIndex(index_id)].second;
+//  }
+
  private:
   static constexpr int MAX_INDEX_COUNT = (PAGE_SIZE - 4) / 8;
-
   int FindIndex(const index_id_t index_id);
+
 
  private:
   int count_;

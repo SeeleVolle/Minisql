@@ -1,5 +1,5 @@
 #include "catalog/catalog.h"
-
+#include "page/index_roots_page.h"
 #include "common/instance.h"
 #include "gtest/gtest.h"
 #include "utils/utils.h"
@@ -64,6 +64,8 @@ TEST(CatalogTest, CatalogTableTest) {
   TableInfo *table_info_03 = nullptr;
   ASSERT_EQ(DB_TABLE_NOT_EXIST, catalog_02->GetTable("table-2", table_info_03));
   ASSERT_EQ(DB_SUCCESS, catalog_02->GetTable("table-1", table_info_03));
+
+//  ASSERT_EQ(table_info_02, table_info_03);
   delete db_02;
 }
 
@@ -97,6 +99,11 @@ TEST(CatalogTest, CatalogIndexTest) {
     RowId rid(1000, i);
     ASSERT_EQ(DB_SUCCESS, index_info->GetIndex()->InsertEntry(row, rid, nullptr));
   }
+//Debug
+//  BPlusTreeIndex * test_index = reinterpret_cast<BPlusTreeIndex *>(index_info->GetIndex());
+//  IndexRootsPage * index_root_page = reinterpret_cast<IndexRootsPage *>(db_01->bpm_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+//  BPlusTreePage * root_page = reinterpret_cast<BPlusTree *>(db_01->bpm_->FetchPage(11)->GetData());
+
   // Scan Key
   std::vector<RowId> ret;
   for (int i = 0; i < 10; i++) {

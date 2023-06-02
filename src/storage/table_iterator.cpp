@@ -29,14 +29,14 @@ TableIterator::~TableIterator() {
 
 }
 
-inline bool TableIterator::operator==(const TableIterator &itr) const {
-  //Unique flag: RowId
-  return this->row->GetRowId().Get() == itr.row->GetRowId().Get();
-}
+//bool TableIterator::operator!=(const TableIterator &itr) const {
+//  return this->row->GetRowId().Get() != itr.row->GetRowId().Get();
+//}
 
-inline bool TableIterator::operator!=(const TableIterator &itr) const {
-  return this->row->GetRowId().Get() != itr.row->GetRowId().Get();
-}
+//bool TableIterator::operator==(const TableIterator &itr) const {
+//  //Unique flag: RowId
+//  return this->row->GetRowId().Get() == itr.row->GetRowId().Get();
+//}
 
 const Row &TableIterator::operator*() {
   return *row;
@@ -55,7 +55,7 @@ TableIterator &TableIterator::operator=(const TableIterator &itr) noexcept {
 // ++iter
 TableIterator &TableIterator::operator++() {
   TablePage *now_page = reinterpret_cast<TablePage *>(this->table_heap->buffer_pool_manager_->FetchPage(this->row->GetRowId().GetPageId()));
-  RowId *next_rowid;
+  RowId *next_rowid = new RowId();
   if (now_page->GetNextTupleRid(row->GetRowId(), next_rowid))
   {
     this->row = new Row(*next_rowid);
@@ -76,7 +76,7 @@ TableIterator &TableIterator::operator++() {
 TableIterator TableIterator::operator++(int) {
   TableIterator old = *this;
   TablePage *now_page = reinterpret_cast<TablePage *>(this->table_heap->buffer_pool_manager_->FetchPage(this->row->GetRowId().GetPageId()));
-  RowId *next_rowid;
+  RowId *next_rowid = new RowId();
   page_id_t next_page_id;
 
   if (now_page->GetNextTupleRid(row->GetRowId(), next_rowid))

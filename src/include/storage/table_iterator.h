@@ -18,9 +18,17 @@ public:
 
   virtual ~TableIterator();
 
-  inline bool operator==(const TableIterator &itr) const;
+  inline bool operator==(const TableIterator &itr) const
+  {
+    return this->row->GetRowId().Get() == itr.row->GetRowId().Get();
+  }
 
-  inline bool operator!=(const TableIterator &itr) const;
+
+  inline bool operator!=(const TableIterator &itr) const
+  {
+    return this->row->GetRowId().Get() != itr.row->GetRowId().Get();
+  }
+
 
   const Row &operator*();
 

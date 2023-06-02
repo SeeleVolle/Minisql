@@ -17,7 +17,6 @@ class DBStorageEngine {
   explicit DBStorageEngine(std::string db_name, bool init = true, uint32_t buffer_pool_size = DEFAULT_BUFFER_POOL_SIZE);
 
   ~DBStorageEngine();
-
   std::unique_ptr<ExecuteContext> MakeExecuteContext(Transaction *txn);
 
  public:

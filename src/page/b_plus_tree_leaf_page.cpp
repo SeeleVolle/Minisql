@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "index/generic_key.h"
+#include "utils/tree_file_mgr.h"
 
 #define pairs_off (data_ + LEAF_PAGE_HEADER_SIZE)
 #define pair_size (GetKeySize() + sizeof(RowId))
@@ -40,7 +41,7 @@ page_id_t LeafPage::GetNextPageId() const {
 void LeafPage::SetNextPageId(page_id_t next_page_id) {
   next_page_id_ = next_page_id;
   if (next_page_id == 0) {
-    LOG(INFO) << "Fatal error";
+//    LOG(INFO) << "Fatal error";
   }
 }
 
@@ -249,6 +250,7 @@ void LeafPage::CopyLastFrom(GenericKey *key, const RowId value) {
 void LeafPage::MoveLastToFrontOf(LeafPage *recipient) {
   recipient->CopyFirstFrom(KeyAt(GetSize()-1), ValueAt(GetSize()-1));
   this->IncreaseSize(-1);
+
 }
 
 /*
@@ -256,7 +258,7 @@ void LeafPage::MoveLastToFrontOf(LeafPage *recipient) {
  *
  */
 void LeafPage::CopyFirstFrom(GenericKey *key, const RowId value) {
-  for(int i=1; i < this->GetSize()+1; i++){
+  for(int i=this->GetSize(); i >= 1; i--){
     this->SetKeyAt(i, KeyAt(i-1));
     this->SetValueAt(i, ValueAt(i-1));
   }

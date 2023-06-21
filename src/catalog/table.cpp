@@ -34,7 +34,7 @@ uint32_t TableMetadata::GetSerializedSize() const {
 
 uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta) {
     if (table_meta != nullptr) {
-        LOG(WARNING) << "Pointer object table info is not null in table info deserialize." << std::endl;
+//        LOG(WARNING) << "Pointer object table info is not null in table info deserialize." << std::endl;
         table_meta = nullptr;
     }
     char *p = buf;

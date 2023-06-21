@@ -29,14 +29,6 @@ TableIterator::~TableIterator() {
 
 }
 
-//bool TableIterator::operator!=(const TableIterator &itr) const {
-//  return this->row->GetRowId().Get() != itr.row->GetRowId().Get();
-//}
-
-//bool TableIterator::operator==(const TableIterator &itr) const {
-//  //Unique flag: RowId
-//  return this->row->GetRowId().Get() == itr.row->GetRowId().Get();
-//}
 
 const Row &TableIterator::operator*() {
   return *row;

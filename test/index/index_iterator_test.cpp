@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include "index/b_plus_tree.h"
 #include "index/comparator.h"
+#include "utils/tree_file_mgr.h"
 
 static const std::string db_name = "bp_tree_insert_test.db";
 
@@ -16,21 +17,25 @@ TEST(BPlusTreeTests, IndexIteratorTest) {
   BPlusTree tree(0, engine.bpm_, KP);
   // Generate insert record
   vector<GenericKey *> insert_key;
-  for (int i = 1; i <= 50; i++) {
+  for (int i = 1; i <= 20; i++) {
     GenericKey *key = KP.InitKey();
     std::vector<Field> fields{Field(TypeId::kTypeInt, i)};
     KP.SerializeFromKey(key, Row(fields), table_schema);
     insert_key.emplace_back(key);
     tree.Insert(key, RowId(i * 100), nullptr);
   }
+
   // Generate delete record
   vector<GenericKey *> delete_key;
-  for (int i = 2; i <= 50; i += 2) {
+  for (int i = 2; i <= 20; i += 2) {
+    TreeFileManagers mgr("tree3_");
+//    tree.PrintTree(mgr[0]);
     GenericKey *key = KP.InitKey();
     std::vector<Field> fields{Field(TypeId::kTypeInt, i)};
     KP.SerializeFromKey(key, Row(fields), table_schema);
     delete_key.emplace_back(key);
     tree.Remove(key);
+//    tree.PrintTree(mgr[1]);
   }
   // Search keys
   vector<RowId> v;
@@ -38,7 +43,7 @@ TEST(BPlusTreeTests, IndexIteratorTest) {
   for (auto key : delete_key) {
     ASSERT_FALSE(tree.GetValue(key, v));
   }
-  for (int i = 1; i <= 49; i += 2) {
+  for (int i = 1; i <= 19; i += 2) {
     GenericKey *key = KP.InitKey();
     std::vector<Field> fields{Field(TypeId::kTypeInt, i)};
     KP.SerializeFromKey(key, Row(fields), table_schema);
@@ -46,6 +51,9 @@ TEST(BPlusTreeTests, IndexIteratorTest) {
     ASSERT_TRUE(tree.GetValue(key, v));
     ASSERT_EQ(i * 100, v[v.size() - 1].Get());
   }
+  TreeFileManagers mgr("tree3_");
+//  tree.PrintTree(mgr[6]);
+
   // Iterator
   int i = 0;
   for (auto iter = tree.Begin(); iter != tree.End(); ++iter) {

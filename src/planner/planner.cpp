@@ -35,6 +35,7 @@ void Planner::PlanQuery(pSyntaxNode ast) {
   }
 }
 AbstractPlanNodeRef Planner::PlanSelect(std::shared_ptr<SelectStatement> statement) {
+
   auto out_schema = MakeOutputSchema(statement->column_list_);
   vector<IndexInfo *> indexes;
   vector<IndexInfo *> available_index;
@@ -48,6 +49,13 @@ AbstractPlanNodeRef Planner::PlanSelect(std::shared_ptr<SelectStatement> stateme
       }
     }
   }
+//  if (available_index.empty() || statement->has_or) {
+//    int sum = 0;
+//    for(int i= 0; i < 6000000; i++){
+//        sum += i;
+//    }
+//  }
+//  return make_shared<SeqScanPlanNode>(out_schema, statement->table_name_, statement->where_);
   if (available_index.empty() || statement->has_or) {
     return make_shared<SeqScanPlanNode>(out_schema, statement->table_name_, statement->where_);
   }

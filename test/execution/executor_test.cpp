@@ -71,7 +71,11 @@ TEST_F(ExecutorTest, SimpleDeleteTest) {
 
   // Ensure the key was removed from the index
   std::vector<RowId> rids{};
-  index_info->GetIndex()->ScanKey(index_key, rids, GetTxn());
+  std::vector<Column *>columns = index_info->GetIndexKeySchema()->GetColumns();
+  std::vector<Field> fields;
+  fields.push_back(*index_key.GetField(columns[0]->GetTableInd()));
+  Row index_key_true(fields);
+  index_info->GetIndex()->ScanKey(index_key_true, rids, GetTxn());
   ASSERT_TRUE(rids.empty());
 }
 

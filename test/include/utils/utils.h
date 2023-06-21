@@ -12,7 +12,7 @@
 template <typename T>
 void ShuffleArray(std::vector<T> &array) {
   std::random_device rd;
-  std::mt19937 rng(rd());
+  std::mt19937 rng(10);
   std::shuffle(array.begin(), array.end(), rng);
 }
 

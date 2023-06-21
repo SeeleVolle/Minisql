@@ -228,6 +228,10 @@ void InternalPage::CopyLastFrom(GenericKey *key, const page_id_t value, BufferPo
   this->SetKeyAt(GetSize(), key);
   this->SetValueAt(GetSize(), value);
   this->IncreaseSize(1);
+  auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(GetSize()-1))->GetData());
+  child->SetParentPageId(this->GetPageId());
+  buffer_pool_manager->UnpinPage(child->GetPageId(), true);
+
 }
 
 /*
@@ -248,11 +252,14 @@ void InternalPage::MoveLastToFrontOf(InternalPage *recipient, GenericKey *middle
  * So I need to 'adopt' it by changing its parent page id, which needs to be persisted with BufferPoolManger
  */
 void InternalPage::CopyFirstFrom(GenericKey *key, const page_id_t value, BufferPoolManager *buffer_pool_manager) {
-  for(int i = 1; i < GetSize()+1; i++){
+  for(int i=this->GetSize(); i >= 1; i--){
     this->SetKeyAt(i, KeyAt(i-1));
     this->SetValueAt(i, ValueAt(i-1));
   }
   this->SetKeyAt(0, key);
   this->SetValueAt(0, value);
   this->IncreaseSize(1);
+  auto *child = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager->FetchPage(ValueAt(0))->GetData());
+  child->SetParentPageId(this->GetPageId());
+  buffer_pool_manager->UnpinPage(child->GetPageId(), true);
 }

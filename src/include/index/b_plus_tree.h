@@ -27,7 +27,7 @@ class BPlusTree {
 
  public:
   explicit BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyManager &comparator,
-                     int leaf_max_size = DEFAULT_SIZE, int internal_max_size = DEFAULT_SIZE);
+                     int leaf_max_size = 0, int internal_max_size = 0);
 
   // Returns true if this B+ tree has no keys and values.
   bool IsEmpty() const;

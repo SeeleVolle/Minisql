@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     // create buffer for sql input
     YY_BUFFER_STATE bp = yy_scan_string(cmd);
     if (bp == nullptr) {
-      LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
+//      LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
       exit(1);
     }
     yy_switch_to_buffer(bp);
@@ -65,9 +65,9 @@ int main(int argc, char **argv) {
       printf("%s\n", MinisqlParserGetErrorMessage());
     } else {
       // Comment them out if you don't need to debug the syntax tree
-      printf("[INFO] Sql syntax parse ok!\n");
-      SyntaxTreePrinter printer(MinisqlGetParserRootNode());
-      printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
+//      printf("[INFO] Sql syntax parse ok!\n");
+//      SyntaxTreePrinter printer(MinisqlGetParserRootNode());
+//      printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
     }
 
     auto result = engine.Execute(MinisqlGetParserRootNode());

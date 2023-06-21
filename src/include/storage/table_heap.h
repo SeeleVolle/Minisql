@@ -47,7 +47,7 @@ class TableHeap {
    * @param[in] txn Transaction performing the update
    * @param[in] message Message to log
    */
-  bool UpdateTuple(Row &row, const RowId &rid, Transaction *txn);
+  int UpdateTuple(Row &row, const RowId &rid, Transaction *txn);
 
   /**
    * Called on Commit/Abort to actually delete a tuple or rollback an insert.

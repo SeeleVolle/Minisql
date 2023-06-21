@@ -29,6 +29,12 @@ class ResultWriter {
     }
     stream_ << "\n";
   }
+  void Divider_line(uint32_t length){
+    stream_ << "+";
+    stream_ << std::setfill('-') << std::setw(length + 3) << std::right << "+";
+    stream_ << "\n";
+  }
+
   void BeginRow() { stream_ << "|"; }
   void EndRow() { stream_ << std::endl; }
   void EndInformation(size_t result_size, double time, bool is_scan) {

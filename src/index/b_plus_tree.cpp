@@ -15,7 +15,7 @@
  */
 
 //For debug
-static TreeFileManagers mgr("tree_2");
+//static TreeFileManagers mgr("tree3_");
 
 BPlusTree::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyManager &KM,
                      int leaf_max_size, int internal_max_size)
@@ -24,6 +24,11 @@ BPlusTree::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager
       processor_(KM),
       leaf_max_size_(leaf_max_size),
       internal_max_size_(internal_max_size) {
+  int leaf_size = (((PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / (processor_.GetKeySize() + sizeof(RowId))) - 1);
+  int internal_size = (((PAGE_SIZE - INTERNAL_PAGE_HEADER_SIZE) / (processor_.GetKeySize() + sizeof(RowId))) - 1);
+  int maxsize = leaf_size < internal_size ? leaf_size : internal_size;
+  this->leaf_max_size_ =  maxsize;
+  this->internal_max_size_ = maxsize;
 }
 
 void BPlusTree::Destroy(page_id_t current_page_id) {
@@ -47,7 +52,7 @@ bool BPlusTree::IsEmpty() const {
 bool BPlusTree::GetValue(const GenericKey *key, std::vector<RowId> &result, Transaction *transaction) {
   Page* page = FindLeafPage(key, INVALID_PAGE_ID, false);
   if(page == NULL){
-    LOG(WARNING) <<"Failed to find leaf page in the BPLusTree::GetValue" << std::endl;
+//    LOG(WARNING) <<"Failed to find leaf page in the BPLusTree::GetValue" << std::endl;
     return false;
   }
   LeafPage* leaf_page = reinterpret_cast<LeafPage *>(page->GetData());
@@ -75,6 +80,8 @@ bool BPlusTree::GetValue(const GenericKey *key, std::vector<RowId> &result, Tran
 bool BPlusTree::Insert(GenericKey *key, const RowId &value, Transaction *transaction) {
   std::vector<RowId> result;
   //If the B+ tree is empty
+//  TreeFileManagers mgr("tree41_");
+//  PrintTree(mgr[0]);
   if(IsEmpty()){
     StartNewTree(key, value);
     return true;
@@ -246,17 +253,17 @@ void BPlusTree::Remove(const GenericKey *key, Transaction *transaction) {
   else{
     Page * page = FindLeafPage(key, INVALID_PAGE_ID, false);
     if(page == nullptr){
-      LOG(ERROR) << "Can't find the leaf page in the Remove" << endl;
+//      LOG(ERROR) << "Can't find the leaf page in the Remove" << endl;
       throw std::bad_alloc();
     }
     //2. Fetch the leaf_page according to the key
     LeafPage * leaf_page = reinterpret_cast<LeafPage *>(page->GetData());
     //3. Check whether the leaf_page is need to redistribute or coalesce
     leaf_page->RemoveAndDeleteRecord(key, processor_);
-    TreeFileManagers mgr("tree2_");
-    PrintTree(mgr[0]);
+//    TreeFileManagers mgr("tree2_");
+//    PrintTree(mgr[0]);
     bool is_dirty = CoalesceOrRedistribute(leaf_page, transaction);
-    PrintTree(mgr[1]);
+//    PrintTree(mgr[1]);
     buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), is_dirty);
   }
 }
@@ -286,7 +293,7 @@ bool BPlusTree::CoalesceOrRedistribute(N *&node, Transaction *transaction) {
     page_id_t parent_id = node->GetParentPageId();
     InternalPage * parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_id)->GetData());
     if(parent_page == nullptr){
-       LOG(ERROR) << "Can't find the parent page in the CoalesceOrRedistribute" << endl;
+//       LOG(ERROR) << "Can't find the parent page in the CoalesceOrRedistribute" << endl;
        throw std::bad_alloc();
     }
     int current_index = parent_page->ValueIndex(node->GetPageId());
@@ -294,7 +301,7 @@ bool BPlusTree::CoalesceOrRedistribute(N *&node, Transaction *transaction) {
     int sibling_index = (current_index == 0) ? current_index + 1 : current_index - 1;
     Page * page = buffer_pool_manager_->FetchPage(parent_page->ValueAt(sibling_index));
     if(page == nullptr){
-       LOG(ERROR) << "Can't find the sibling page in the CoalesceOrRedistribute" << endl;
+//       LOG(ERROR) << "Can't find the sibling page in the CoalesceOrRedistribute" << endl;
        throw std::bad_alloc();
     }
     if(node->IsLeafPage() == true){
@@ -316,7 +323,7 @@ bool BPlusTree::CoalesceOrRedistribute(N *&node, Transaction *transaction) {
         buffer_pool_manager_->UnpinPage(parent_id, true);
         buffer_pool_manager_->UnpinPage(leaf_sibling_page->GetPageId(), true);
         buffer_pool_manager_->UnpinPage(leaf_node->GetPageId(), true);
-        Check();
+//        Check();
         return true;
       }
     }
@@ -373,7 +380,7 @@ bool BPlusTree::Coalesce(LeafPage *&neighbor_node, LeafPage *&node, InternalPage
     neighbor_node->SetNextPageId(node->GetNextPageId());
   parent_page->Remove(index);
   buffer_pool_manager_->UnpinPage(parent_page_id, true);
-  PrintTree(mgr[3]);
+//  PrintTree(mgr[0]);
 
   return CoalesceOrRedistribute(parent_page, transaction);
 }
@@ -397,7 +404,7 @@ bool BPlusTree::Coalesce(InternalPage *&neighbor_node, InternalPage *&node, Inte
   node->MoveAllTo(neighbor_node, parent->KeyAt(index), buffer_pool_manager_);
   parent_page->Remove(index);
   buffer_pool_manager_->UnpinPage(parent_page_id, true);
-  PrintTree(mgr[3]);
+//  PrintTree(mgr[3]);
 
   return CoalesceOrRedistribute(parent_page, transaction);
 }
@@ -420,17 +427,20 @@ void BPlusTree::Redistribute(LeafPage *neighbor_node, LeafPage *node, int index)
     LOG(ERROR) << "Can't find the parent page in the Redistribute" << endl;
     throw std::bad_alloc();
   }
+//  TreeFileManagers mgr("tree3_");
   //For different neighbor_node places
   if(index == 0){
     neighbor_node->MoveFirstToEndOf(node);
     parent_page->SetKeyAt(1, neighbor_node->KeyAt(0));
   }
   else{
+//    PrintTree(mgr[0]);
     neighbor_node->MoveLastToFrontOf(node);
     parent_page->SetKeyAt(index, node->KeyAt(0));
+//    PrintTree(mgr[2]);
+
   }
   buffer_pool_manager_->UnpinPage(parent_page->GetPageId(), true);
-  PrintTree(mgr[3]);
 }
 
 void BPlusTree::Redistribute(InternalPage *neighbor_node, InternalPage *node, int index) {
@@ -449,7 +459,7 @@ void BPlusTree::Redistribute(InternalPage *neighbor_node, InternalPage *node, in
     parent_page->SetKeyAt(index, node->KeyAt(0));
   }
   buffer_pool_manager_->UnpinPage(parent_page->GetPageId(), true);
-  PrintTree(mgr[3]);
+//  PrintTree(mgr[3]);
 
 }
 /*
@@ -472,7 +482,7 @@ bool BPlusTree::AdjustRoot(BPlusTreePage *old_root_node) {
     this->root_page_id_ = root_page->RemoveAndReturnOnlyChild();
     UpdateRootPageId(true);
     LeafPage * new_root_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(this->root_page_id_)->GetData());
-    new_root_page->SetPageId(this->root_page_id_);
+//    new_root_page->SetPageId(this->root_page_id_);
     new_root_page->SetParentPageId(INVALID_PAGE_ID);
     //Unpin the old_page_id and new_root_page
     buffer_pool_manager_->UnpinPage(this->root_page_id_, true);
@@ -489,7 +499,7 @@ bool BPlusTree::AdjustRoot(BPlusTreePage *old_root_node) {
     buffer_pool_manager_->UnpinPage(old_page_id, true);
     return true;
   }
-  LOG(WARNING) << "The root page is not deleted" <<endl;
+//  LOG(WARNING) << "The root page is not deleted" <<endl;
   return false;
 }
 
@@ -543,6 +553,7 @@ IndexIterator BPlusTree::End() {
  */
 Page *BPlusTree::FindLeafPage(const GenericKey *key, page_id_t page_id, bool leftMost) {
   if(root_page_id_ == INVALID_PAGE_ID){
+    return nullptr;
     ASSERT(false, "The root page is invalid when finding the leaf page\n");
   }
   if(leftMost == false){
@@ -551,7 +562,7 @@ Page *BPlusTree::FindLeafPage(const GenericKey *key, page_id_t page_id, bool lef
     page_id_t child_id = root_page_id_; //Will record the last fetch
     //Iteratively find the leaf page
     while(page->IsLeafPage() == false){
-      if(processor_.CompareKeys(key, page->KeyAt(1)) < 0){
+       if(processor_.CompareKeys(key, page->KeyAt(1)) < 0){
         child_id = page->ValueAt(0);
       }
       else if(processor_.CompareKeys(key, page->KeyAt(page->GetSize()-1)) >= 0){

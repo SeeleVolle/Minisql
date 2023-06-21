@@ -141,6 +141,14 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   //Add the table into the catalog manager
   table_names_.emplace(table_name, next_table_id_);
   tables_.emplace(next_table_id_, table_info);
+  //scan for the unique key to create index
+//  for(auto iter : schema->GetColumns())
+//    if(iter->IsUnique() == true)
+//    {
+//      std::vector<std::string> index_keys({iter->GetName()});
+//      IndexInfo * index_info = nullptr;
+//      CreateIndex(table_name, "idx_"+iter->GetName(), index_keys, txn, index_info, "bptree");
+//    }
   //Add the table into the catalog meta
   page_id_t table_page_id;
   Page * table_page = buffer_pool_manager_->NewPage(table_page_id);
@@ -189,6 +197,12 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   if(index_names_[table_name].find(index_name) != index_names_[table_name].end()){
     return DB_INDEX_ALREADY_EXIST;
   }
+//  for(auto index : indexes_)
+//  {
+//      IndexInfo * index_info = index.second;
+//      if(index_info->Get== index_name)
+//          return DB_INDEX_ALREADY_EXIST;
+//  }
   index_info = IndexInfo::Create();
   //Create the index
   std::vector<uint32_t> key_map;
@@ -221,9 +235,10 @@ dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::strin
   if(table_names_.find(table_name) == table_names_.end()){
     return DB_TABLE_NOT_EXIST;
   }
+//  index_names_
   //Then check the index whether exists or not
-  if(index_names_.find(index_name) != index_names_.end()){
-    return DB_INDEX_ALREADY_EXIST;
+  if(index_names_.at(table_name).find(index_name) == index_names_.at(table_name).end()){
+    return DB_FAILED;
   }
   index_info = indexes_.at(index_names_.at(table_name).at(index_name));
   return DB_SUCCESS;
@@ -233,9 +248,16 @@ dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::strin
  * TODO: Student Implement
  */
 dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vector<IndexInfo *> &indexes) const {
+  if(index_names_.empty() == true){
+    return DB_SUCCESS;
+  }
   if(table_names_.find(table_name) == table_names_.end()){
     return DB_TABLE_NOT_EXIST;
   }
+  if(index_names_.find(table_name) == index_names_.end()){
+    return DB_FAILED;
+  }
+
   for(auto iter : index_names_.at(table_name)){
     indexes.push_back(indexes_.at(iter.second));
   }
@@ -262,11 +284,11 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
 
   //Drop the table
   TableInfo * table_info = tables_[table_names_[table_name]];
+  catalog_meta_->table_meta_pages_.erase(table_names_[table_name]);
   delete table_info;
   tables_.erase(table_names_[table_name]);
   table_names_.erase(table_name);
 
-  catalog_meta_->table_meta_pages_.erase(table_info->GetTableId());
   next_table_id_--;
 
   return DB_SUCCESS;
@@ -282,15 +304,28 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   }
   TableInfo * table_info = tables_[table_names_[table_name]];
   //Then check the index whether exists or not
-  if(index_names_.find(index_name) == index_names_.end()){
+  if(index_names_[table_name].find(index_name) == index_names_[table_name].end()){
     return DB_INDEX_NOT_FOUND;
   }
   //Drop the index
   IndexInfo * index_info = indexes_[index_names_[table_name][index_name]];
+
+  for(TableIterator iter = table_info->GetTableHeap()->Begin(nullptr); iter != table_info->GetTableHeap()->End(); iter++){
+    Row row = *iter;
+    std::vector<Column*> columns = index_info->GetIndexKeySchema()->GetColumns();
+    ASSERT(columns.size() == 1, "InsertExecutor only support single column index");
+    std::vector<Field> Fields;
+    Fields.push_back(*(row.GetField(columns[0]->GetTableInd())));
+    Row index_row(Fields);
+    RowId rid = row.GetRowId();
+    index_row.SetRowId(rid);
+    index_info->GetIndex()->RemoveEntry(index_row, rid, nullptr);
+  }
+  catalog_meta_->index_meta_pages_.erase(index_names_[table_name][index_name]);
+
   delete index_info;
   indexes_.erase(index_names_[table_name][index_name]);
   index_names_[table_name].erase(index_name);
-  catalog_meta_->index_meta_pages_.erase(index_names_[table_name][index_name]);
   next_index_id_--;
 
   return DB_SUCCESS;
@@ -303,7 +338,7 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
 dberr_t CatalogManager::FlushCatalogMetaPage() const {
   Page * catalog_page = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);
   if(catalog_page == nullptr){
-    LOG(ERROR) << "Failed to fetch the catalog meta page in the FlushCatalogMetaPage" << endl;
+//    LOG(ERROR) << "Failed to fetch the catalog meta page in the FlushCatalogMetaPage" << endl;
     return DB_FAILED;
   }
   char * data = catalog_page->GetData();
@@ -338,16 +373,16 @@ dberr_t CatalogManager::FlushCatalogMetaPage() const {
 dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t page_id) {
   Page * table_page = buffer_pool_manager_->FetchPage(page_id);
   if(table_page == nullptr){
-    LOG(ERROR) << "Failed to fetch table page in the LoadTable" << endl;
+//    LOG(ERROR) << "Failed to fetch table page in the LoadTable" << endl;
     return DB_FAILED;
   }
   TableMetadata * meta_data = nullptr;
   if(TableMetadata::DeserializeFrom(table_page->GetData(), meta_data) != meta_data->GetSerializedSize()){
-    LOG(ERROR) << "The Deserialize outcome doesn't match the size of Serialize " << endl;
+//    LOG(ERROR) << "The Deserialize outcome doesn't match the size of Serialize " << endl;
     return DB_FAILED;
   }
   if(meta_data->GetTableId() != table_id){
-    LOG(ERROR) << "The table id doesn't match the table id in the meta data" << endl;
+//    LOG(ERROR) << "The table id doesn't match the table id in the meta data" << endl;
     return DB_FAILED;
   }
   TableHeap * table_heap = TableHeap::Create(buffer_pool_manager_, meta_data->GetFirstPageId(), Schema::DeepCopySchema(meta_data->GetSchema()), log_manager_ ,lock_manager_);
@@ -382,8 +417,19 @@ dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t pag
   }
   page_id_t b_root_page_id = -1;
   if(index_root_page->GetIndexRootId(index_id, &b_root_page_id) == false){
-    LOG(ERROR) << "Failed to get the index root page id in the LoadIndex" << endl;
-    return DB_FAILED;
+    //It means the index has no data, we dont't need to load the data inside it
+    TableInfo * table_info = tables_[meta_data->GetTableId()];
+    IndexInfo * index_info = IndexInfo::Create();
+    index_info->Init(meta_data, table_info, buffer_pool_manager_);
+//    LOG(WARNING) << "Failed to get the index root page id in the LoadIndex" << endl;
+//    index_names_[table_info->GetTableName()].emplace(meta_data->GetIndexName(), meta_data->GetIndexId());
+//  cout<<"Index_name: "<<meta_data->GetIndexName()<<" Index_id: "<<index_names_[table_info->GetTableName()].at(meta_data->GetIndexName())<<endl;
+//    indexes_.emplace(meta_data->GetIndexId(), index_info);
+//  IndexInfo * tset_info = indexes_[meta_data->GetIndexId()];
+    buffer_pool_manager_->UnpinPage(page_id, true);
+    return DB_SUCCESS;
+
+    return DB_SUCCESS;
   }
   InternalPage * b_root_page = reinterpret_cast<InternalPage *>((buffer_pool_manager_->FetchPage(b_root_page_id)->GetData()));
   InternalPage * tree_page = b_root_page;

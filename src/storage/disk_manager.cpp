@@ -51,9 +51,11 @@ void DiskManager::WritePage(page_id_t logical_page_id, const char *page_data) {
  * TODO: Student Implement
  */
 page_id_t DiskManager::AllocatePage() {
+//  std::cout<<BitmapPage<PAGE_SIZE>::GetMaxSupportedSize()<<std::endl;
+//  exit(1);
   size_t bitmap_page_index = 0;
   char bitmap_data[PAGE_SIZE];
-  memset(bitmap_data,0,PAGE_SIZE * sizeof(char));
+  memset(bitmap_data, 0, PAGE_SIZE * sizeof(char));
   DiskFileMetaPage* meta_page = reinterpret_cast<DiskFileMetaPage*>(this->GetMetaData());
   while(1){
     //Read the bitmap_data for the bitmap_page, note 0 for the metapage
@@ -112,7 +114,7 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
   char bitmap_data[PAGE_SIZE];
   size_t page_index = logical_page_id % BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
   size_t bitmap_page_index = logical_page_id / BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
-  ReadPhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1) ,bitmap_data);
+  ReadPhysicalPage(FIRST_BITMAP_INDEX + bitmap_page_index*(BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() + 1),bitmap_data);
   BitmapPage<PAGE_SIZE> bitmap_page(bitmap_data);
   if(bitmap_page.IsPageFree(page_index))
     return true;

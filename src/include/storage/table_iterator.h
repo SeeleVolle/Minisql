@@ -20,12 +20,20 @@ public:
 
   inline bool operator==(const TableIterator &itr) const
   {
+    if(itr.row == nullptr && this->row == nullptr)
+      return true;
+    if(itr.row == nullptr)
+      return false;
     return this->row->GetRowId().Get() == itr.row->GetRowId().Get();
   }
 
 
   inline bool operator!=(const TableIterator &itr) const
   {
+    if(itr.row == nullptr && this->row == nullptr)
+      return false;
+    if(itr.row == nullptr)
+      return true;
     return this->row->GetRowId().Get() != itr.row->GetRowId().Get();
   }
 

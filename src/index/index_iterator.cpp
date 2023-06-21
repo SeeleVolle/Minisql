@@ -37,6 +37,7 @@ IndexIterator &IndexIterator::operator++() {
     else{
       current_page_id = next_page_id;
       page = reinterpret_cast<LeafPage *>(buffer_pool_manager->FetchPage(current_page_id)->GetData());
+      item_index = 0;
     }
     buffer_pool_manager->UnpinPage(old_page_id, true);
   }

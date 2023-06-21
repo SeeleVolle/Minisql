@@ -13,7 +13,7 @@
  * | HEADER | KEY(1) + RID(1) | KEY(2) + RID(2) | ... | KEY(n) + RID(n)
  *  ----------------------------------------------------------------------
  *
- *  Header format (size in byte, 24 bytes in total):
+ *  Header format (size in byte, 24 bytes in 1total):
  *  ---------------------------------------------------------------------
  * | PageType (4) | CurrentSize (4) | MaxSize (4) | ParentPageId (4) |
  *  ---------------------------------------------------------------------

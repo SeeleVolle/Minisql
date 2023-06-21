@@ -35,9 +35,13 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
 
   // 1.1    If P exists, pin it and return it immediately.
+  if(page_id == INVALID_PAGE_ID || page_id < 0){
+    cout<<"page_id:"<<page_id<<endl;
+    ASSERT(page_id != INVALID_PAGE_ID && page_id >= 0, "Invalid page id");
+  }
   if(page_table_.find(page_id) != page_table_.end()){
-    pages_[page_table_[page_id]].pin_count_++;
     replacer_->Pin(page_table_[page_id]);
+    pages_[page_table_[page_id]].pin_count_++;
     return pages_+page_table_[page_id];
   }
   frame_id_t new_frame_id = -1;
@@ -49,28 +53,29 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   }
   else if(replacer_->Victim(&new_frame_id) == false){
     return nullptr;
-    LOG(ERROR) << "No available page in the buffer_pool" <<std::endl;
+//    LOG(ERROR) << "No available page in the buffer_pool" <<std::endl;
   }
+  replacer_->Pin(new_frame_id);
   // 2.     If R is dirty, write it back to the disk.
   if(pages_[new_frame_id].IsDirty())
     FlushPage(pages_[new_frame_id].GetPageId());
-  //// 3.     Delete R from the page table and insert P.
+  // 3.     Delete R from the page table and insert P.
   page_table_.erase(pages_[new_frame_id].GetPageId());
   page_table_.insert(std::pair<page_id_t, frame_id_t>(page_id, new_frame_id));
-
-  // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
   pages_[new_frame_id].ResetMemory();
-  pages_[new_frame_id].page_id_ = page_id;
-  pages_[new_frame_id].is_dirty_ = false;
   pages_[new_frame_id].pin_count_ = 1;
-  replacer_->Pin(new_frame_id);
   //Update P's metadata, read in the page content from disk, and then return a pointer to P.
   disk_manager_->ReadPage(page_id, pages_[new_frame_id].GetData());
 
   return pages_+new_frame_id;
 }
 
-/**
+/**pair<page_id_t, frame_id_t>(page_id, new_frame_id));
+
+  // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
+  pages_[new_frame_id].page_id_ = page_id;
+  pages_[new_frame_id].is_dirty_ = false;
+  pages_[new_frame_i
  * TODO: Student Implement
  */
 Page *BufferPoolManager::NewPage(page_id_t &page_id) {
@@ -92,8 +97,9 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   }
   else if(replacer_->Victim(&new_frame_id) == false){
     return nullptr;
-    LOG(ERROR) << "NO available page in the free_list and replacer" << std::endl;
+//    LOG(ERROR) << "NO available page in the free_list and replacer" << std::endl;
   }
+  replacer_->Pin(new_frame_id);
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   pages_[new_frame_id].ResetMemory();
   pages_[new_frame_id].pin_count_ = 1; //The pin count for the new page is 1, for the creating processes
@@ -182,7 +188,7 @@ bool BufferPoolManager::CheckAllUnpinned() {
   for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].pin_count_ != 0) {
       res = false;
-      LOG(ERROR) << "page " << pages_[i].page_id_ << " pin count:" << pages_[i].pin_count_ << endl;
+//      LOG(ERROR) << "page " << pages_[i].page_id_ << " pin count:" << pages_[i].pin_count_ << endl;
     }
   }
   return res;
@@ -194,7 +200,7 @@ bool BufferPoolManager::CheckAllPinned() {
     if(pages_[i].pin_count_ == 0){
       res = false;
       break;
-      LOG(ERROR) << "page " << pages_[i].page_id_ << " is unpinned" <<endl;
+//      LOG(ERROR) << "page " << pages_[i].page_id_ << " is unpinned" <<endl;
     }
   }
   return res;

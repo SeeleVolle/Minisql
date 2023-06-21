@@ -31,9 +31,9 @@ BitmapPage<PageSize>::BitmapPage()
 template <size_t PageSize>
 BitmapPage<PageSize>::BitmapPage(char *bitmap_data)
 {
-  uint32_t* ptr = reinterpret_cast<uint32_t*> (bitmap_data);
-  this->page_allocated_ = (*ptr);
-  this->next_free_page_ = *(ptr+1);
+//  uint32_t* ptr = reinterpret_cast<uint32_t*> (bitmap_data);
+  this->page_allocated_ = *(reinterpret_cast<uint32_t*> (bitmap_data));
+  this->next_free_page_ = *(reinterpret_cast<uint32_t*> (bitmap_data + 4));
   //Transfer the bit data to array "byte" from the original data
   //2 uint32 = 8 bytes
   for(size_t i=0; i<MAX_CHARS; i++)
@@ -48,17 +48,22 @@ bool BitmapPage<PageSize>::AllocatePage(uint32_t &page_offset) {
   page_offset = this->next_free_page_;
   this->page_allocated_ += 1;
   this->bytes[page_offset / 8] |= (1 << (page_offset%8));
+  //Update the next_free_page_
   if(this->page_allocated_ != GetMaxSupportedSize())
-  if(IsPageFree(page_offset+1))
-    next_free_page_ = page_offset+1;
-  else{
-    while(!IsPageFree(page_offset))
-    {
-      page_offset++;
-      page_offset %= GetMaxSupportedSize();
+  {
+    if(IsPageFree(page_offset+1))
+      next_free_page_ = page_offset+1;
+    else{
+      while(!IsPageFree(page_offset+1))
+      {
+        page_offset++;
+        page_offset %= GetMaxSupportedSize();
+      }
+      next_free_page_ = page_offset;
     }
-    next_free_page_ = page_offset;
   }
+  else
+    next_free_page_ = GetMaxSupportedSize();
     return true;
 }
 

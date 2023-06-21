@@ -144,7 +144,8 @@ class Field {
     }
   }
 
- protected:
+// protected:
+public:
   union Val {
     int32_t integer_;
     float float_;

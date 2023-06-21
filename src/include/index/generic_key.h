@@ -46,16 +46,16 @@ class KeyManager {
 
       if (lhs_value->CompareLessThan(*rhs_value) == CmpBool::kTrue) {
         if (key_schema_->GetColumn(i)->GetType() == kTypeChar) {
-          delete lhs_value->GetData();
-          delete rhs_value->GetData();
+//          delete lhs_value->GetData();
+//          delete rhs_value->GetData();
         }
         return -1;
       }
 
       if (lhs_value->CompareGreaterThan(*rhs_value) == CmpBool::kTrue) {
         if (key_schema_->GetColumn(i)->GetType() == kTypeChar) {
-          delete lhs_value->GetData();
-          delete rhs_value->GetData();
+//          delete lhs_value->GetData();
+//          delete rhs_value->GetData();
         }
         return 1;
       }

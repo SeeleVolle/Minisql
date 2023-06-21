@@ -27,6 +27,10 @@ class BPlusTreeIndex : public Index {
 
   IndexIterator GetEndIterator();
 
+  bool IsEmpty(){
+    return container_.IsEmpty();
+  }
+
 //  bool SetBPlusTree(BPlusTree *tree)
 //  {
 //      if(tree == nullptr)

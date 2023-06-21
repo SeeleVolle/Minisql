@@ -33,7 +33,7 @@ uint32_t Schema::GetSerializedSize() const {
 
 uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema) {
   if(schema != nullptr){
-    LOG(WARNING) << "Pointer to column is not null in column deserialize." << std::endl;
+//    LOG(WARNING) << "Pointer to column is not null in column deserialize." << std::endl;
     schema = nullptr;
   }
   uint32_t offset = 0;

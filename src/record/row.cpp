@@ -9,20 +9,22 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
   uint32_t offset = 0;
   size_t field_count = this->GetFieldCount();
   //If the field count is 0, means the row is empty
-  if(field_count == 0){
-    return 0;
-  }
+//  if(field_count == 0){
+//    return 0;
+//  }
   //Write the field count to the buffer, the MATCH_WRITE_TO just write a type value
   MACH_WRITE_TO(size_t, buf, field_count);
   offset = offset + sizeof(size_t);
   //Create a bitmap page to mark the null fields
-  char *bitmap = new char(field_count / 8 + 1);
-  memset(bitmap, 0, sizeof(char)*(field_count / 8 + 1));
+  char *bitmap = new char((field_count + 7) / 8);
+  memset(bitmap, 0, sizeof(char)*((field_count + 7) / 8));
   for(int i = 0; i < field_count; i++){
     //If the field is null, mark the bitmap as 1
     if(fields_[i]->IsNull()){
       bitmap[i / 8] |= (1 << (i % 8));
     }
+    else
+      bitmap[i / 8] |= (0 << (i % 8));
   }
   //Write the bitmap into the buf
   for(int i=0; i < field_count / 8 + 1; i++){
@@ -54,7 +56,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
   if(!fields_.empty())
     this->fields_.clear();
   for(int i=0; i<field_count; i++) {
-    Field *new_field;
+    Field *new_field = nullptr;
     offset += Field::DeserializeFrom(buf + offset, schema->GetColumn(i)->GetType(), &new_field, bitmap[i / 8] & (1<< (i % 8)));
     this->fields_.push_back(new_field);
   }

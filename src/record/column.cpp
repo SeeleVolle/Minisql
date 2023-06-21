@@ -79,7 +79,7 @@ uint32_t Column::GetSerializedSize() const {
  */
 uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
   if(column != nullptr) {
-    LOG(WARNING) << "Column is not nullptr, delete it first.\n";
+//    LOG(WARNING) << "Column is not nullptr, delete it first.\n";
     column = nullptr;
   }
   uint32_t offset = 0;

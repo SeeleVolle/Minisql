@@ -97,7 +97,8 @@ class AbstractStatement {
    * @param ast The ptr to the child node of kNodeConditions
    * @return An owning pointer to the ConstantValueExpression
    */
-  AbstractExpressionRef MakePredicate(pSyntaxNode ast, std::string table_name,
+  AbstractExpressionRef
+  MakePredicate(pSyntaxNode ast, std::string table_name,
                                       vector<uint32_t> *column_in_condition = nullptr, bool *has_or = nullptr) {
     switch (ast->type_) {
       case kNodeConnector: {

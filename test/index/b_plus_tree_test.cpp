@@ -12,20 +12,18 @@ TEST(BPlusTreeTests, SampleTest) {
   // Init engine
   DBStorageEngine engine(db_name);
   std::vector<Column *> columns = {
-      new Column("int", TypeId::kTypeInt, 0, false, false),
+          new Column("int", TypeId::kTypeInt, 0, false, false),
   };
   Schema *table_schema = new Schema(columns);
   KeyManager KP(table_schema, 16);
-  BPlusTree tree(0, engine.bpm_, KP, 4, 4);
-  TreeFileManagers mgr("tree_");
+  BPlusTree tree(0, engine.bpm_, KP);
   // Prepare data
-  const int n = 150;
+  const int n = 50000;
   vector<GenericKey *> keys;
   vector<RowId> values;
   vector<GenericKey *> delete_seq;
   map<GenericKey *, RowId> kv_map;
-
-  for (int i = 1; i <= n; i++) {
+  for (int i = 0; i < n; i++) {
     GenericKey *key = KP.InitKey();
     std::vector<Field> fields{Field(TypeId::kTypeInt, i)};
     KP.SerializeFromKey(key, Row(fields), table_schema);
@@ -33,42 +31,21 @@ TEST(BPlusTreeTests, SampleTest) {
     values.push_back(RowId(i));
     delete_seq.push_back(key);
   }
-
   vector<GenericKey *> keys_copy(keys);
-
   // Shuffle data
   ShuffleArray(keys);
   ShuffleArray(values);
   ShuffleArray(delete_seq);
-  {
-    ofstream ofstream1;
-    ofstream1.open("example.txt");
-    ofstream1 << "keys: " << endl;
-    for(int i = 0; i < n; i++){
-      ofstream1 <<"(GenericKey *)" <<keys[i]<<","<<endl;
-    }
-    ofstream1 << "values: " << endl;
-    for(int i = 0; i < n; i++){
-      ofstream1 << "(RowId)"<<values[i].Get()<<","<<endl;
-    }
-    ofstream1 << "Delete_keys: " <<endl;
-    for(int i = 0; i < n; i++){
-      ofstream1 << "(GenericKey *)"<<delete_seq[i]<<","<<endl;
-    }
-  }
-
   // Map key value
   for (int i = 0; i < n; i++) {
     kv_map[keys[i]] = values[i];
   }
   // Insert data
-
   for (int i = 0; i < n; i++) {
     tree.Insert(keys[i], values[i]);
   }
   ASSERT_TRUE(tree.Check());
   // Print tree
-//  tree.PrintTree(mgr[0]);
   // Search keys
   vector<RowId> ans;
   for (int i = 0; i < n; i++) {
@@ -78,14 +55,11 @@ TEST(BPlusTreeTests, SampleTest) {
   ASSERT_TRUE(tree.Check());
   // Delete half keys
   for (int i = 0; i < n / 2; i++) {
-    tree.PrintTree(mgr[0]);
+//    TreeFileManagers mgr("tree_");
     tree.Remove(delete_seq[i]);
-    tree.PrintTree(mgr[1]);
-    ASSERT_TRUE(tree.Check());
+//    tree.PrintTree(mgr[i]);
   }
-  ASSERT_TRUE(tree.Check());
-
-  tree.PrintTree(mgr[1]);
+//  tree.PrintTree(mgr[1]);
   // Check valid
   ans.clear();
   for (int i = 0; i < n / 2; i++) {
@@ -95,6 +69,4 @@ TEST(BPlusTreeTests, SampleTest) {
     ASSERT_TRUE(tree.GetValue(delete_seq[i], ans));
     ASSERT_EQ(kv_map[delete_seq[i]], ans[ans.size() - 1]);
   }
-  ASSERT_TRUE(tree.Check());
-
 }

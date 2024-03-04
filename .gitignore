@@ -8,4 +8,9 @@ cmake-build-debug/
 cmake-build-release/
 cmake-build-wsl
 cmake-build-debug-wsl
-clean
+cmake-build*
+https://github.com/SeeleVolle/Minisql/
+clean*
+
+3210105944-黄锦骏_minisql/
+3210105944-黄锦骏_minisql*

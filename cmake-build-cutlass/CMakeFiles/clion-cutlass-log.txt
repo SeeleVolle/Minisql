@@ -1,0 +1,1 @@
+Cannot create directory D:/Prifiles/Courses/SecondSem_Spring/DBS/minisql/cmake-build-cutlass: `mkdir "/D:"` failed with exit code 1: stdout='', stderr='mkdir: cannot create directory '/D:': Permission denied'
